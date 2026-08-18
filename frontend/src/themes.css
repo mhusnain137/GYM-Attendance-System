@@ -1,0 +1,188 @@
+/* ============================================
+   THEME VARIABLES
+   ============================================ */
+
+:root {
+  /* Theme 1: Dark (Existing Default) */
+  --bg-primary: #0a0e14;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
+  --card-background: #111827;
+  --border-color: #1f2937;
+  --border-hover: #4b5563;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #e0e0e0;
+  --text-tertiary: #9ca3af;
+  --text-muted: #6b7280;
+  
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  
+  --success: #10b981;
+  --success-hover: #059669;
+  
+  --warning: #f59e0b;
+  
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  
+  --camera-bg: #000;
+  
+  --modal-bg: #111827;
+  --modal-overlay: rgba(0, 0, 0, 0.7);
+  
+  --status-online: #10b981;
+  --status-offline: #ef4444;
+  
+  --count-bg: #3b82f6;
+  --count-text: white;
+}
+
+[data-theme="midnight"] {
+  /* Theme 2: Midnight - Blue/Black AI Monitoring */
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #0f172a;
+  --bg-tertiary: #1e293b;
+  --card-background: #0f172a;
+  --border-color: #1e3a5f;
+  --border-hover: #334e68;
+  
+  --text-primary: #e0f2fe;
+  --text-secondary: #bae6fd;
+  --text-tertiary: #94a3b8;
+  --text-muted: #64748b;
+  
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  
+  --success: #10b981;
+  --success-hover: #059669;
+  
+  --warning: #f59e0b;
+  
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  
+  --camera-bg: #000;
+  
+  --modal-bg: #0f172a;
+  --modal-overlay: rgba(0, 0, 0, 0.8);
+  
+  --status-online: #10b981;
+  --status-offline: #ef4444;
+  
+  --count-bg: #3b82f6;
+  --count-text: white;
+}
+
+[data-theme="slate"] {
+  /* Theme 3: Slate - Enterprise/Developer */
+  --bg-primary: #f1f5f9;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #e2e8f0;
+  --card-background: #ffffff;
+  --border-color: #cbd5e1;
+  --border-hover: #94a3b8;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  
+  --success: #10b981;
+  --success-hover: #059669;
+  
+  --warning: #f59e0b;
+  
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  
+  --camera-bg: #000;
+  
+  --modal-bg: #ffffff;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  
+  --status-online: #10b981;
+  --status-offline: #ef4444;
+  
+  --count-bg: #3b82f6;
+  --count-text: white;
+}
+
+[data-theme="light"] {
+  /* Theme 4: Light - Professional Light Interface */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --card-background: #ffffff;
+  --border-color: #e2e8f0;
+  --border-hover: #cbd5e1;
+  
+  --text-primary: #1e293b;
+  --text-secondary: #334155;
+  --text-tertiary: #64748b;
+  --text-muted: #94a3b8;
+  
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  
+  --success: #10b981;
+  --success-hover: #059669;
+  
+  --warning: #f59e0b;
+  
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  
+  --camera-bg: #000;
+  
+  --modal-bg: #ffffff;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  
+  --status-online: #10b981;
+  --status-offline: #ef4444;
+  
+  --count-bg: #3b82f6;
+  --count-text: white;
+}
+
+[data-theme="high-contrast"] {
+  /* Theme 5: High Contrast - Accessibility/Testing */
+  --bg-primary: #000000;
+  --bg-secondary: #000000;
+  --bg-tertiary: #000000;
+  --card-background: #000000;
+  --border-color: #ffffff;
+  --border-hover: #ffffff;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #ffffff;
+  --text-tertiary: #ffffff;
+  --text-muted: #ffffff;
+  
+  --accent: #0000ff;
+  --accent-hover: #000080;
+  
+  --success: #00ff00;
+  --success-hover: #008000;
+  
+  --warning: #ffff00;
+  
+  --danger: #ff0000;
+  --danger-hover: #800000;
+  
+  --camera-bg: #000;
+  
+  --modal-bg: #000000;
+  --modal-overlay: rgba(255, 255, 255, 0.9);
+  
+  --status-online: #00ff00;
+  --status-offline: #ff0000;
+  
+  --count-bg: #0000ff;
+  --count-text: #ffffff;
+}
