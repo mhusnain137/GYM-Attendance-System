@@ -118,13 +118,16 @@ function Attendance() {
 
   const groupedVisits = filteredVisits.reduce((groups, record) => {
     const key = `${record.person_id}_${record.date}`;
+    const currentName = record.name || record.person_id;
     if (!groups[key]) {
       groups[key] = {
         person_id: record.person_id,
-        name: record.name,
+        name: currentName,
         date: record.date,
         visits: []
       };
+    } else if (currentName && !currentName.startsWith("Visitor #") && groups[key].name.startsWith("Visitor #")) {
+      groups[key].name = currentName;
     }
     groups[key].visits.push(record);
     return groups;

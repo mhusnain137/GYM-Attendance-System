@@ -229,6 +229,17 @@ async def update_person_name(person_id: str, data: dict):
                     att_changed = True
             if att_changed:
                 recognition_service.save_attendance(attendance)
+
+            # Update visits records
+            if hasattr(recognition_service, 'load_visits'):
+                visits = recognition_service.load_visits()
+                vis_changed = False
+                for v in visits:
+                    if v.get("person_id") == person_id:
+                        v["name"] = new_name
+                        vis_changed = True
+                if vis_changed:
+                    recognition_service.save_visits(visits)
             
             # Auto-Unfreeze & link membership if matching name/id found
             memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
@@ -338,12 +349,27 @@ async def set_primary_face_sample(person_id: str, sample_index: int):
         return result
     return {"success": False, "message": "Recognition service not available"}
 
+def resolve_person_names(records):
+    """Dynamically sync latest registered person names into attendance and visit records"""
+    global recognition_service
+    if not recognition_service or not records:
+        return records
+    persons = recognition_service.persons or []
+    people_map = {p.get("id"): p.get("name") for p in persons if p.get("id") and p.get("name")}
+    for r in records:
+        pid = r.get("person_id")
+        if pid in people_map:
+            r["name"] = people_map[pid]
+            if "person_name" in r:
+                r["person_name"] = people_map[pid]
+    return records
+
 @app.get("/api/attendance")
 async def get_attendance():
     """Get all attendance records"""
     global recognition_service
     if recognition_service:
-        return recognition_service.load_attendance()
+        return resolve_person_names(recognition_service.load_attendance())
     return []
 
 @app.get("/api/attendance/today")
@@ -355,7 +381,7 @@ async def get_today_attendance():
         today = datetime.now().strftime("%Y-%m-%d")
         attendance = recognition_service.load_attendance()
         today_attendance = [record for record in attendance if record.get("date") == today]
-        return today_attendance
+        return resolve_person_names(today_attendance)
     return []
 
 @app.get("/api/visits")
@@ -363,7 +389,7 @@ async def get_visits():
     """Get all visit logs"""
     global recognition_service
     if recognition_service and hasattr(recognition_service, 'load_visits'):
-        return recognition_service.load_visits()
+        return resolve_person_names(recognition_service.load_visits())
     return []
 
 @app.get("/api/visits/today")
@@ -375,7 +401,7 @@ async def get_today_visits():
         today = datetime.now().strftime("%Y-%m-%d")
         visits = recognition_service.load_visits()
         today_visits = [record for record in visits if record.get("date") == today]
-        return today_visits
+        return resolve_person_names(today_visits)
     return []
 
 @app.get("/api/events")
