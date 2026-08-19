@@ -291,6 +291,23 @@ async def add_person_face_image(person_id: str, file: UploadFile = File(...)):
         return result
     return {"success": False, "message": "Recognition service not available"}
 
+from typing import List
+
+@app.post("/api/people/{person_id}/batch-face-images")
+async def add_person_batch_face_images(person_id: str, files: List[UploadFile] = File(...)):
+    """Upload multiple face photos at once to extract embedding samples for a person"""
+    global recognition_service
+    if recognition_service:
+        bytes_list = []
+        for file in files:
+            content = await file.read()
+            bytes_list.append(content)
+        result = recognition_service.add_person_batch_face_images(person_id, bytes_list)
+        if result.get("success"):
+            add_event("REGISTRATION", f"Added {result.get('added_count', 1)} face sample photos for {person_id}")
+        return result
+    return {"success": False, "message": "Recognition service not available"}
+
 @app.get("/api/attendance")
 async def get_attendance():
     """Get all attendance records"""

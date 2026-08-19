@@ -436,6 +436,35 @@ class RecognitionService:
             print("Error in add_person_face_image:", e)
             return {"success": False, "message": f"Error processing image: {str(e)}"}
 
+    def add_person_batch_face_images(self, person_id, images_bytes_list):
+        """Extract SFace embeddings from multiple uploaded photos in a single batch"""
+        added_count = 0
+        failed_count = 0
+        messages = []
+        last_count = 0
+
+        for idx, img_bytes in enumerate(images_bytes_list):
+            res = self.add_person_face_image(person_id, img_bytes)
+            if res.get("success"):
+                added_count += 1
+                last_count = res.get("embedding_count", 0)
+            else:
+                failed_count += 1
+                messages.append(f"Photo #{idx+1}: {res.get('message')}")
+
+        if added_count > 0:
+            return {
+                "success": True,
+                "message": f"Successfully added {added_count} new face sample(s)! (Total samples: {last_count})",
+                "added_count": added_count,
+                "failed_count": failed_count,
+                "embedding_count": last_count,
+                "details": messages
+            }
+        else:
+            first_msg = messages[0] if messages else "No valid face photos processed"
+            return {"success": False, "message": first_msg, "details": messages}
+
     def get_face_embedding(self, frame, face):
         """Extract face embedding with optional CLAHE lighting normalization"""
         try:

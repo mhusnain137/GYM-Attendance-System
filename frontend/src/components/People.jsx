@@ -29,8 +29,8 @@ function People() {
   // Photo upload modal state
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [personForPhoto, setPersonForPhoto] = useState(null);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [filePreviews, setFilePreviews] = useState([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoUploadMsg, setPhotoUploadMsg] = useState('');
   const [photoUploadStatus, setPhotoUploadStatus] = useState('');
@@ -130,38 +130,47 @@ function People() {
   // Photo Upload Handlers
   const handleAddPhotoClick = (person) => {
     setPersonForPhoto(person);
-    setSelectedFile(null);
-    setFilePreview(null);
+    setSelectedFiles([]);
+    setFilePreviews([]);
     setPhotoUploadMsg('');
     setPhotoUploadStatus('');
     setShowPhotoModal(true);
   };
 
   const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setSelectedFile(file);
-      setFilePreview(URL.createObjectURL(file));
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+      setSelectedFiles(files);
+      const previews = files.map(f => URL.createObjectURL(f));
+      setFilePreviews(previews);
       setPhotoUploadMsg('');
       setPhotoUploadStatus('');
     }
   };
 
   const handleUploadPhoto = async () => {
-    if (!personForPhoto || !selectedFile) return;
+    if (!personForPhoto || selectedFiles.length === 0) return;
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
+    const personId = personForPhoto.person_id || personForPhoto.id;
     setIsUploadingPhoto(true);
-    setPhotoUploadMsg('⏳ Processing photo & extracting face embeddings...');
+    setPhotoUploadMsg(`⏳ Processing ${selectedFiles.length} photo(s) & extracting face embeddings...`);
     setPhotoUploadStatus('');
 
     try {
-      const personId = personForPhoto.person_id || personForPhoto.id;
-      const response = await axios.post(`/api/people/${personId}/face-image`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      let response;
+      if (selectedFiles.length === 1) {
+        const formData = new FormData();
+        formData.append('file', selectedFiles[0]);
+        response = await axios.post(`/api/people/${personId}/face-image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      } else {
+        const formData = new FormData();
+        selectedFiles.forEach(f => formData.append('files', f));
+        response = await axios.post(`/api/people/${personId}/batch-face-images`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+      }
 
       if (response.data.success) {
         setPhotoUploadStatus('success');
@@ -170,8 +179,8 @@ function People() {
         setTimeout(() => {
           setShowPhotoModal(false);
           setPersonForPhoto(null);
-          setSelectedFile(null);
-          setFilePreview(null);
+          setSelectedFiles([]);
+          setFilePreviews([]);
         }, 2200);
       } else {
         setPhotoUploadStatus('error');
@@ -180,7 +189,7 @@ function People() {
     } catch (error) {
       console.error('Error uploading face photo:', error);
       setPhotoUploadStatus('error');
-      setPhotoUploadMsg('✕ Error uploading photo. Please try again.');
+      setPhotoUploadMsg('✕ Error uploading photos. Please try again.');
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -648,20 +657,27 @@ function People() {
 
               {/* Upload Input & Preview Area */}
               <div className="photo-upload-box">
-                {filePreview ? (
+                {filePreviews.length > 0 ? (
                   <div className="photo-preview-container">
-                    <img src={filePreview} alt="Selected Face Preview" className="photo-preview-img" />
-                    <button className="btn-change-photo" onClick={() => { setSelectedFile(null); setFilePreview(null); }}>
-                      🔄 Choose Different Photo
+                    <div className="multi-preview-grid">
+                      {filePreviews.map((previewSrc, idx) => (
+                        <div key={idx} className="preview-thumb-box">
+                          <img src={previewSrc} alt={`Selected ${idx+1}`} className="photo-preview-img" />
+                          <span className="thumb-label">Photo #{idx+1}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="btn-change-photo" onClick={() => { setSelectedFiles([]); setFilePreviews([]); }}>
+                      🔄 Choose Different Photo(s)
                     </button>
                   </div>
                 ) : (
                   <label className="photo-drop-zone">
-                    <input type="file" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+                    <input type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
                     <div className="drop-zone-content">
-                      <span className="upload-icon">📷</span>
-                      <span className="upload-title">Click to Select Clear Face Photo</span>
-                      <span className="upload-subtitle">JPG, PNG or WEBP (Ensure 1 clear face under good lighting)</span>
+                      <span className="upload-icon">📸</span>
+                      <span className="upload-title">Click to Select 1 or Multiple Face Photos</span>
+                      <span className="upload-subtitle">Select multiple photos at once (JPG, PNG or WEBP)</span>
                     </div>
                   </label>
                 )}
@@ -685,9 +701,9 @@ function People() {
               <button 
                 className="button button-primary" 
                 onClick={handleUploadPhoto} 
-                disabled={isUploadingPhoto || !selectedFile}
+                disabled={isUploadingPhoto || selectedFiles.length === 0}
               >
-                {isUploadingPhoto ? '⏳ Extracting Features...' : '✨ Upload & Extract Embedding'}
+                {isUploadingPhoto ? '⏳ Extracting Features...' : `✨ Upload ${selectedFiles.length > 1 ? `${selectedFiles.length} Photos` : 'Photo'} & Extract Embeddings`}
               </button>
             </div>
           </div>
