@@ -308,6 +308,36 @@ async def add_person_batch_face_images(person_id: str, files: List[UploadFile] =
         return result
     return {"success": False, "message": "Recognition service not available"}
 
+@app.get("/api/people/{person_id}/face-samples")
+async def get_person_face_samples(person_id: str):
+    """Get list of stored face sample thumbnails for a person"""
+    global recognition_service
+    if recognition_service:
+        return recognition_service.get_person_face_samples(person_id)
+    return []
+
+@app.delete("/api/people/{person_id}/face-samples/{sample_index}")
+async def delete_person_face_sample(person_id: str, sample_index: int):
+    """Delete an individual stored face sample for a person"""
+    global recognition_service
+    if recognition_service:
+        result = recognition_service.delete_person_face_sample(person_id, sample_index)
+        if result.get("success"):
+            add_event("REGISTRATION", f"Deleted face sample #{sample_index + 1} for {person_id}")
+        return result
+    return {"success": False, "message": "Recognition service not available"}
+
+@app.put("/api/people/{person_id}/primary-face-sample/{sample_index}")
+async def set_primary_face_sample(person_id: str, sample_index: int):
+    """Set a specific sample index as the primary reference embedding and thumbnail for a person"""
+    global recognition_service
+    if recognition_service:
+        result = recognition_service.set_primary_face_sample(person_id, sample_index)
+        if result.get("success"):
+            add_event("REGISTRATION", f"Set sample #{sample_index + 1} as primary face photo for {person_id}")
+        return result
+    return {"success": False, "message": "Recognition service not available"}
+
 @app.get("/api/attendance")
 async def get_attendance():
     """Get all attendance records"""

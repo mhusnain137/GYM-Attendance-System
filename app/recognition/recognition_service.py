@@ -338,11 +338,12 @@ class RecognitionService:
             print("CLAHE error:", e)
             return aligned_face
 
-    def crop_and_save_face_image(self, frame, face, person_id):
-        """Save strictly 1 high quality face crop image per person to disk asynchronously"""
+    def crop_and_save_face_image(self, frame, face, person_id, sample_idx=0):
+        """Save high quality face crop image per person and sample to disk asynchronously"""
         try:
             os.makedirs(recognition_config.FACE_CROPS_DIR, exist_ok=True)
-            crop_path = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}.jpg")
+            primary_path = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}.jpg")
+            sample_path = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}_sample_{sample_idx}.jpg")
             
             x, y, w, h = face[:4]
             x, y, w, h = int(x), int(y), int(w), int(h)
@@ -359,7 +360,9 @@ class RecognitionService:
             
             face_crop = frame[y1:y2, x1:x2]
             if face_crop.size > 0:
-                cv2.imwrite(crop_path, face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                cv2.imwrite(sample_path, face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                if sample_idx == 0 or not os.path.exists(primary_path):
+                    cv2.imwrite(primary_path, face_crop, [cv2.IMWRITE_JPEG_QUALITY, 85])
         except Exception as e:
             print("Error saving face crop:", e)
 
@@ -417,6 +420,7 @@ class RecognitionService:
                 if len(embeddings) >= 5:
                     embeddings.pop(1) # Keep primary 0th embedding, rotate out older extra samples
 
+                sample_idx = len(embeddings)
                 embeddings.append(feature_norm.tolist())
                 target_person["embeddings"] = embeddings
                 target_person["embedding"] = embeddings[0] # primary reference
@@ -424,8 +428,8 @@ class RecognitionService:
                 self.save_database(persons)
                 self.persons = persons
 
-                # Save face crop image
-                self.crop_and_save_face_image(img, face, person_id)
+                # Save face crop image with sample index
+                self.crop_and_save_face_image(img, face, person_id, sample_idx=sample_idx)
 
                 return {
                     "success": True, 
@@ -435,6 +439,155 @@ class RecognitionService:
         except Exception as e:
             print("Error in add_person_face_image:", e)
             return {"success": False, "message": f"Error processing image: {str(e)}"}
+
+    def get_person_face_samples(self, person_id):
+        """Get list of stored face sample thumbnail URLs for a person"""
+        import time
+        t_stamp = int(time.time() * 1000)
+        with self.lock:
+            target_person = next((p for p in self.persons if p.get("id") == person_id or p.get("person_id") == person_id), None)
+            if not target_person:
+                return []
+            
+            embeddings = target_person.get("embeddings", [])
+            if not embeddings and target_person.get("embedding"):
+                embeddings = [target_person["embedding"]]
+                
+            samples = []
+            for idx in range(len(embeddings)):
+                sample_filename = f"{person_id}_sample_{idx}.jpg"
+                sample_path = os.path.join(recognition_config.FACE_CROPS_DIR, sample_filename)
+                
+                if os.path.exists(sample_path):
+                    url = f"/api/face-crops/{sample_filename}?t={t_stamp}"
+                else:
+                    url = f"/api/face-crops/{person_id}.jpg?t={t_stamp}"
+                    
+                samples.append({
+                    "index": idx,
+                    "url": url,
+                    "is_primary": idx == 0
+                })
+            return samples
+
+    def delete_person_face_sample(self, person_id, sample_index):
+        """Delete an individual face sample embedding and image for a person"""
+        try:
+            with self.lock:
+                persons = self.load_database()
+                target_person = None
+                for p in persons:
+                    if p.get("id") == person_id or p.get("person_id") == person_id:
+                        target_person = p
+                        break
+
+                if not target_person:
+                    return {"success": False, "message": "Person profile not found"}
+
+                embeddings = target_person.get("embeddings", [])
+                if not embeddings and target_person.get("embedding"):
+                    embeddings = [target_person["embedding"]]
+
+                if len(embeddings) <= 1:
+                    return {"success": False, "message": "Cannot delete the last remaining face sample."}
+
+                if sample_index < 0 or sample_index >= len(embeddings):
+                    return {"success": False, "message": "Invalid sample index"}
+
+                embeddings.pop(sample_index)
+                target_person["embeddings"] = embeddings
+                target_person["embedding"] = embeddings[0]
+
+                self.save_database(persons)
+                self.persons = persons
+
+                # Delete sample image file
+                sample_file = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}_sample_{sample_index}.jpg")
+                if os.path.exists(sample_file):
+                    try:
+                        os.remove(sample_file)
+                    except Exception:
+                        pass
+
+                return {
+                    "success": True,
+                    "message": f"Deleted face sample #{sample_index + 1} successfully!",
+                    "remaining_count": len(embeddings)
+                }
+        except Exception as e:
+            print("Error in delete_person_face_sample:", e)
+            return {"success": False, "message": f"Error deleting face sample: {str(e)}"}
+
+    def set_primary_face_sample(self, person_id, sample_index):
+        """Set a specific sample index as the primary reference embedding and crop image"""
+        try:
+            with self.lock:
+                persons = self.load_database()
+                target_person = None
+                for p in persons:
+                    if p.get("id") == person_id or p.get("person_id") == person_id:
+                        target_person = p
+                        break
+
+                if not target_person:
+                    return {"success": False, "message": "Person profile not found"}
+
+                embeddings = target_person.get("embeddings", [])
+                if not embeddings and target_person.get("embedding"):
+                    embeddings = [target_person["embedding"]]
+
+                if sample_index < 0 or sample_index >= len(embeddings):
+                    return {"success": False, "message": "Invalid sample index"}
+
+                if sample_index == 0:
+                    return {"success": True, "message": "Sample is already primary"}
+
+                # Move selected sample to index 0
+                chosen_embedding = embeddings.pop(sample_index)
+                embeddings.insert(0, chosen_embedding)
+                target_person["embeddings"] = embeddings
+                target_person["embedding"] = embeddings[0]
+
+                self.save_database(persons)
+                self.persons = persons
+
+                # Swap sample images on disk so sample_0 becomes the new primary image
+                import shutil
+                sample_0_file = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}_sample_0.jpg")
+                sample_target_file = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}_sample_{sample_index}.jpg")
+                primary_file = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}.jpg")
+
+                if not os.path.exists(sample_0_file) and os.path.exists(primary_file):
+                    try:
+                        shutil.copy2(primary_file, sample_0_file)
+                    except Exception:
+                        pass
+
+                if os.path.exists(sample_0_file) and os.path.exists(sample_target_file):
+                    temp_file = os.path.join(recognition_config.FACE_CROPS_DIR, f"{person_id}_temp.jpg")
+                    try:
+                        shutil.copy2(sample_0_file, temp_file)
+                        shutil.copy2(sample_target_file, sample_0_file)
+                        shutil.copy2(temp_file, sample_target_file)
+                        if os.path.exists(temp_file):
+                            os.remove(temp_file)
+                    except Exception as e:
+                        print("Error swapping sample files:", e)
+
+                if os.path.exists(sample_0_file):
+                    try:
+                        shutil.copy2(sample_0_file, primary_file)
+                    except Exception as e:
+                        print("Error updating primary_file:", e)
+
+                return {
+                    "success": True,
+                    "message": f"Sample #{sample_index + 1} set as Primary face photo!",
+                    "primary_index": 0
+                }
+        except Exception as e:
+            print("Error in set_primary_face_sample:", e)
+            return {"success": False, "message": f"Error setting primary face photo: {str(e)}"}
 
     def add_person_batch_face_images(self, person_id, images_bytes_list):
         """Extract SFace embeddings from multiple uploaded photos in a single batch"""

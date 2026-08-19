@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
 import './People.css';
@@ -31,9 +31,29 @@ function People() {
   const [personForPhoto, setPersonForPhoto] = useState(null);
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [filePreviews, setFilePreviews] = useState([]);
+  const [existingSamples, setExistingSamples] = useState([]);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoUploadMsg, setPhotoUploadMsg] = useState('');
   const [photoUploadStatus, setPhotoUploadStatus] = useState('');
+
+  // Gallery Modal state
+  const [showGalleryModal, setShowGalleryModal] = useState(false);
+  const [personForGallery, setPersonForGallery] = useState(null);
+
+  // Live Webcam Capture State
+  const [photoInputMode, setPhotoInputMode] = useState('file'); // 'file' | 'webcam'
+  const [isWebcamActive, setIsWebcamActive] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+
+  const fetchFaceSamples = async (personId) => {
+    try {
+      const res = await axios.get(`/api/people/${personId}/face-samples`);
+      setExistingSamples(res.data || []);
+    } catch (err) {
+      console.error('Error fetching face samples:', err);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -134,7 +154,138 @@ function People() {
     setFilePreviews([]);
     setPhotoUploadMsg('');
     setPhotoUploadStatus('');
+    setPhotoInputMode('file');
     setShowPhotoModal(true);
+  };
+
+  const startModalWebcam = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+      setIsWebcamActive(true);
+    } catch (err) {
+      console.error('Error starting modal webcam:', err);
+      alert('Could not access laptop webcam. Please check camera permissions.');
+    }
+  };
+
+  const stopModalWebcam = () => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsWebcamActive(false);
+  };
+
+  const handleClosePhotoModal = () => {
+    stopModalWebcam();
+    setShowPhotoModal(false);
+    setPersonForPhoto(null);
+    setSelectedFiles([]);
+    setFilePreviews([]);
+    setPhotoUploadMsg('');
+    setPhotoUploadStatus('');
+    setPhotoInputMode('file');
+  };
+
+  const handleOpenGalleryModal = (person) => {
+    setPersonForGallery(person);
+    const pid = person.person_id || person.id;
+    fetchFaceSamples(pid);
+    setShowGalleryModal(true);
+  };
+
+  const handleCloseGalleryModal = () => {
+    setShowGalleryModal(false);
+    setPersonForGallery(null);
+  };
+
+  const handleDeleteSample = async (sampleIdx) => {
+    const targetPerson = personForGallery || personForPhoto;
+    if (!targetPerson) return;
+    const personId = targetPerson.person_id || targetPerson.id;
+
+    if (existingSamples.length <= 1) {
+      alert("Cannot delete the last remaining face sample. Person must have at least 1 face sample!");
+      return;
+    }
+
+    try {
+      setPhotoUploadMsg('⏳ Deleting face sample...');
+      setPhotoUploadStatus('');
+      const res = await axios.delete(`/api/people/${personId}/face-samples/${sampleIdx}`);
+      if (res.data.success) {
+        setPhotoUploadStatus('success');
+        setPhotoUploadMsg(`✓ ${res.data.message}`);
+        await fetchFaceSamples(personId);
+        await fetchData();
+      } else {
+        setPhotoUploadStatus('error');
+        setPhotoUploadMsg(`✕ ${res.data.message}`);
+      }
+    } catch (err) {
+      console.error('Error deleting face sample:', err);
+      setPhotoUploadStatus('error');
+      setPhotoUploadMsg('✕ Failed to delete face sample.');
+    }
+  };
+
+  const handleSetPrimarySample = async (sampleIdx) => {
+    const targetPerson = personForGallery || personForPhoto;
+    if (!targetPerson) return;
+    const personId = targetPerson.person_id || targetPerson.id;
+
+    if (sampleIdx === 0) return;
+
+    try {
+      setPhotoUploadMsg('⏳ Setting primary face photo...');
+      setPhotoUploadStatus('');
+      const res = await axios.put(`/api/people/${personId}/primary-face-sample/${sampleIdx}`);
+      if (res.data.success) {
+        setPhotoUploadStatus('success');
+        setPhotoUploadMsg(`✓ ${res.data.message}`);
+        await fetchFaceSamples(personId);
+        await fetchData();
+      } else {
+        setPhotoUploadStatus('error');
+        setPhotoUploadMsg(`✕ ${res.data.message}`);
+      }
+    } catch (err) {
+      console.error('Error setting primary face sample:', err);
+      setPhotoUploadStatus('error');
+      setPhotoUploadMsg('✕ Failed to set primary face photo.');
+    }
+  };
+
+  const handleRemoveNewFile = (indexToRemove) => {
+    setSelectedFiles(prev => prev.filter((_, idx) => idx !== indexToRemove));
+    setFilePreviews(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const captureWebcamSnapshot = () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `cam_snapshot_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        const previewUrl = URL.createObjectURL(blob);
+        
+        setSelectedFiles(prev => [...prev, file]);
+        setFilePreviews(prev => [...prev, previewUrl]);
+        setPhotoUploadMsg(`📸 Captured snapshot #${selectedFiles.length + 1}!`);
+        setPhotoUploadStatus('success');
+      }
+    }, 'image/jpeg', 0.92);
   };
 
   const handleFileSelect = (e) => {
@@ -177,6 +328,7 @@ function People() {
         setPhotoUploadMsg(`✓ ${response.data.message}`);
         await fetchData();
         setTimeout(() => {
+          stopModalWebcam();
           setShowPhotoModal(false);
           setPersonForPhoto(null);
           setSelectedFiles([]);
@@ -420,6 +572,18 @@ function People() {
                   </div>
                 </div>
 
+                {/* Stored Photos Count Badge & Manage Link - Render ONLY if person has > 1 face photos */}
+                {person.sampleCount > 1 && (
+                  <div className="card-samples-strip">
+                    <div className="mini-thumbs-header" style={{ marginBottom: 0 }}>
+                      <span className="strip-label">🖼️ <strong>{person.sampleCount}</strong> Stored Face Photos</span>
+                      <button className="btn-manage-photos-link" onClick={() => handleOpenGalleryModal(person)}>
+                        Manage All ➔
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions Toolbar */}
                 <div className="card-actions-row">
                   <button
@@ -644,7 +808,7 @@ function People() {
           <div className="modal-content photo-modal-content">
             <div className="modal-header">
               <h2>📸 Add Extra Face Photo Sample</h2>
-              <button className="close-btn" onClick={() => setShowPhotoModal(false)} disabled={isUploadingPhoto}>✕</button>
+              <button className="close-btn" onClick={handleClosePhotoModal} disabled={isUploadingPhoto}>✕</button>
             </div>
             <div className="modal-body photo-modal-body">
               <div className="photo-person-info">
@@ -655,33 +819,129 @@ function People() {
                 </span>
               </div>
 
-              {/* Upload Input & Preview Area */}
-              <div className="photo-upload-box">
-                {filePreviews.length > 0 ? (
-                  <div className="photo-preview-container">
-                    <div className="multi-preview-grid">
-                      {filePreviews.map((previewSrc, idx) => (
-                        <div key={idx} className="preview-thumb-box">
-                          <img src={previewSrc} alt={`Selected ${idx+1}`} className="photo-preview-img" />
-                          <span className="thumb-label">Photo #{idx+1}</span>
-                        </div>
-                      ))}
+              {/* Existing Stored Samples Gallery */}
+              {existingSamples && existingSamples.length > 0 && (
+                <div className="existing-samples-section">
+                  <span className="section-title">🖼️ Currently Stored Face Photos ({existingSamples.length}/5):</span>
+                  <div className="multi-preview-grid">
+                    {existingSamples.map((sample) => (
+                      <div key={sample.index} className="preview-thumb-box stored-thumb-box">
+                        <img 
+                          src={sample.url} 
+                          alt={`Sample ${sample.index + 1}`} 
+                          className="photo-preview-img stored-img" 
+                          onError={(e) => { e.target.src = `/api/face-crops/${personForPhoto.person_id || personForPhoto.id}.jpg`; }}
+                        />
+                        <span className="thumb-label">
+                          {sample.is_primary ? '⭐ Primary' : `Sample #${sample.index + 1}`}
+                        </span>
+                        {existingSamples.length > 1 && (
+                          <button 
+                            className="btn-delete-sample-icon" 
+                            title="Delete this stored face photo sample"
+                            onClick={() => handleDeleteSample(sample.index)}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Mode Switcher Tabs */}
+              <div className="photo-mode-tabs">
+                <button
+                  className={`photo-mode-btn ${photoInputMode === 'file' ? 'active' : ''}`}
+                  onClick={() => { stopModalWebcam(); setPhotoInputMode('file'); }}
+                >
+                  📁 Upload Files from PC
+                </button>
+                <button
+                  className={`photo-mode-btn ${photoInputMode === 'webcam' ? 'active' : ''}`}
+                  onClick={() => { setPhotoInputMode('webcam'); startModalWebcam(); }}
+                >
+                  📷 Live Webcam Snapshots
+                </button>
+              </div>
+
+              {/* Mode 1: File Input & Preview Area */}
+              {photoInputMode === 'file' && (
+                <div className="photo-upload-box">
+                  {filePreviews.length > 0 ? (
+                    <div className="photo-preview-container">
+                      <div className="multi-preview-grid">
+                        {filePreviews.map((previewSrc, idx) => (
+                          <div key={idx} className="preview-thumb-box">
+                            <img src={previewSrc} alt={`Selected ${idx+1}`} className="photo-preview-img" />
+                            <span className="thumb-label">Photo #{idx+1}</span>
+                            <button 
+                              className="btn-remove-new-icon"
+                              title="Remove from selection"
+                              onClick={() => handleRemoveNewFile(idx)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <button className="btn-change-photo" onClick={() => { setSelectedFiles([]); setFilePreviews([]); }}>
+                        🔄 Clear All Selections
+                      </button>
                     </div>
-                    <button className="btn-change-photo" onClick={() => { setSelectedFiles([]); setFilePreviews([]); }}>
-                      🔄 Choose Different Photo(s)
+                  ) : (
+                    <label className="photo-drop-zone">
+                      <input type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
+                      <div className="drop-zone-content">
+                        <span className="upload-icon">📁</span>
+                        <span className="upload-title">Click to Select 1 or Multiple Face Photos</span>
+                        <span className="upload-subtitle">Select multiple photos at once (JPG, PNG or WEBP)</span>
+                      </div>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {/* Mode 2: Live Webcam Capture Area */}
+              {photoInputMode === 'webcam' && (
+                <div className="webcam-capture-box">
+                  <div className="modal-video-container">
+                    <video ref={videoRef} autoPlay playsInline muted className="modal-webcam-feed" />
+                    <canvas ref={canvasRef} style={{ display: 'none' }} />
+                  </div>
+                  <div className="webcam-actions-row">
+                    <button
+                      className="button button-success btn-capture"
+                      onClick={captureWebcamSnapshot}
+                      disabled={!isWebcamActive}
+                    >
+                      📸 CAPTURE PHOTO (#{selectedFiles.length + 1})
                     </button>
                   </div>
-                ) : (
-                  <label className="photo-drop-zone">
-                    <input type="file" accept="image/*" multiple onChange={handleFileSelect} style={{ display: 'none' }} />
-                    <div className="drop-zone-content">
-                      <span className="upload-icon">📸</span>
-                      <span className="upload-title">Click to Select 1 or Multiple Face Photos</span>
-                      <span className="upload-subtitle">Select multiple photos at once (JPG, PNG or WEBP)</span>
+
+                  {filePreviews.length > 0 && (
+                    <div className="photo-preview-container" style={{ marginTop: '12px' }}>
+                      <span className="captured-count-title">Captured Snapshots ({filePreviews.length}):</span>
+                      <div className="multi-preview-grid">
+                        {filePreviews.map((previewSrc, idx) => (
+                          <div key={idx} className="preview-thumb-box">
+                            <img src={previewSrc} alt={`Snapshot ${idx+1}`} className="photo-preview-img" />
+                            <span className="thumb-label">Snap #{idx+1}</span>
+                            <button 
+                              className="btn-remove-new-icon"
+                              title="Remove snapshot"
+                              onClick={() => handleRemoveNewFile(idx)}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </label>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
               {/* Upload Status Notification */}
               {photoUploadMsg && (
@@ -693,7 +953,7 @@ function People() {
             <div className="modal-footer">
               <button 
                 className="btn-secondary" 
-                onClick={() => setShowPhotoModal(false)} 
+                onClick={handleClosePhotoModal} 
                 disabled={isUploadingPhoto}
               >
                 Cancel
@@ -704,6 +964,90 @@ function People() {
                 disabled={isUploadingPhoto || selectedFiles.length === 0}
               >
                 {isUploadingPhoto ? '⏳ Extracting Features...' : `✨ Upload ${selectedFiles.length > 1 ? `${selectedFiles.length} Photos` : 'Photo'} & Extract Embeddings`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View & Manage Face Photos Gallery Modal */}
+      {showGalleryModal && personForGallery && (
+        <div className="modal-overlay">
+          <div className="modal-content gallery-modal-content">
+            <div className="modal-header">
+              <h2>🖼️ Stored Face Photos — {personForGallery.name}</h2>
+              <button className="close-btn" onClick={handleCloseGalleryModal}>✕</button>
+            </div>
+            <div className="modal-body gallery-modal-body">
+              <div className="photo-person-info">
+                <span className="person-id-badge">{personForGallery.person_id || personForGallery.id}</span>
+                <h3>{personForGallery.name}</h3>
+                <span className="sample-count-info">
+                  Total Face Samples Stored: <strong>{existingSamples.length} / 5</strong>
+                </span>
+              </div>
+
+              {/* High-res Photos Grid with Delete Buttons */}
+              <div className="gallery-grid">
+                {existingSamples.map((sample) => (
+                  <div key={sample.index} className="gallery-item-card">
+                    <div className="gallery-img-box">
+                      <img 
+                        src={sample.url} 
+                        alt={`Face Sample ${sample.index + 1}`} 
+                        className="gallery-img" 
+                        onError={(e) => { e.target.src = `/api/face-crops/${personForGallery.person_id || personForGallery.id}.jpg`; }}
+                      />
+                      <span className={`sample-badge ${sample.is_primary ? 'primary' : ''}`}>
+                        {sample.is_primary ? '⭐ Primary' : `Sample #${sample.index + 1}`}
+                      </span>
+                    </div>
+                    <div className="gallery-item-actions">
+                      {sample.is_primary ? (
+                        <span className="primary-active-tag">⭐ Main Face</span>
+                      ) : (
+                        <button 
+                          className="btn-make-primary"
+                          title="Set as main primary face photo for this person"
+                          onClick={() => handleSetPrimarySample(sample.index)}
+                        >
+                          ⭐ Make Primary
+                        </button>
+                      )}
+
+                      {existingSamples.length > 1 && (
+                        <button 
+                          className="btn-delete-sample"
+                          title="Delete this face sample"
+                          onClick={() => handleDeleteSample(sample.index)}
+                        >
+                          🗑️ Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Status Notification */}
+              {photoUploadMsg && (
+                <div className={`photo-status-alert ${photoUploadStatus}`} style={{ marginTop: '10px' }}>
+                  {photoUploadMsg}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <button 
+                className="button button-primary" 
+                onClick={() => {
+                  handleCloseGalleryModal();
+                  handleAddPhotoClick(personForGallery);
+                }}
+              >
+                📸 Add New Face Photo
+              </button>
+              <button className="btn-secondary" onClick={handleCloseGalleryModal}>
+                Close
               </button>
             </div>
           </div>

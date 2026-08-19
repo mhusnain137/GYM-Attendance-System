@@ -22,11 +22,11 @@ CAMERA_WIDTH = 640
 CAMERA_HEIGHT = 480
 
 # Camera source type: 'webcam' or 'rtsp'
-CAMERA_SOURCE = 'webcam'
-# RTSP URL (sanitized placeholder; set RTSP_URL environment variable for production)
-RTSP_URL = os.environ.get('RTSP_URL', 'rtsp://admin:password@192.168.1.100:554/cam/realmonitor?channel=1&subtype=0')
+CAMERA_SOURCE = 'rtsp'
+# Default RTSP URL
+RTSP_URL = os.environ.get('RTSP_URL', 'rtsp://admin:12345abc@192.168.2.253:554/cam/realmonitor?channel=2&subtype=0')
 # Optional camera name for display
-CAMERA_NAME = ''
+CAMERA_NAME = 'CCTV Channel 2'
 
 # RTSP Reconnect Configuration
 RTSP_RECONNECT_ENABLED = True
