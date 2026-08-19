@@ -363,6 +363,79 @@ class RecognitionService:
         except Exception as e:
             print("Error saving face crop:", e)
 
+    def add_person_face_image(self, person_id, image_bytes):
+        """Extract SFace embedding from uploaded photo and add to person's embeddings list"""
+        try:
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            if img is None:
+                return {"success": False, "message": "Invalid image file"}
+
+            img_h, img_w = img.shape[:2]
+            self.detector.setInputSize((img_w, img_h))
+            _, faces = self.detector.detect(img)
+
+            # Restore detector default input size
+            self.detector.setInputSize((recognition_config.DETECTION_WIDTH, recognition_config.DETECTION_WIDTH))
+
+            if faces is None or len(faces) == 0:
+                return {"success": False, "message": "No face detected in the uploaded photo. Please upload a clear photo."}
+            
+            if len(faces) > 1:
+                return {"success": False, "message": "Multiple faces detected. Please upload a photo with only ONE face."}
+
+            face = faces[0]
+            confidence = face[-1]
+            if confidence < 0.65:
+                return {"success": False, "message": "Face confidence too low. Please upload a clearer front-facing photo."}
+
+            aligned_face = self.recognizer.alignCrop(img, face)
+            normalized_face = self.apply_lighting_normalization(aligned_face)
+            feature = self.recognizer.feature(normalized_face)
+            feature_norm = self.normalize_embedding(feature)
+
+            if feature_norm is None:
+                return {"success": False, "message": "Failed to extract face features"}
+
+            with self.lock:
+                persons = self.load_database()
+                target_person = None
+                for p in persons:
+                    if p.get("id") == person_id:
+                        target_person = p
+                        break
+
+                if not target_person:
+                    return {"success": False, "message": "Person profile not found"}
+
+                # Initialize embeddings array if not present
+                embeddings = target_person.get("embeddings", [])
+                if not embeddings and target_person.get("embedding"):
+                    embeddings = [target_person["embedding"]]
+
+                # Limit max 5 embeddings per person
+                if len(embeddings) >= 5:
+                    embeddings.pop(1) # Keep primary 0th embedding, rotate out older extra samples
+
+                embeddings.append(feature_norm.tolist())
+                target_person["embeddings"] = embeddings
+                target_person["embedding"] = embeddings[0] # primary reference
+
+                self.save_database(persons)
+                self.persons = persons
+
+                # Save face crop image
+                self.crop_and_save_face_image(img, face, person_id)
+
+                return {
+                    "success": True, 
+                    "message": f"Successfully added new face sample! (Total samples: {len(embeddings)})",
+                    "embedding_count": len(embeddings)
+                }
+        except Exception as e:
+            print("Error in add_person_face_image:", e)
+            return {"success": False, "message": f"Error processing image: {str(e)}"}
+
     def get_face_embedding(self, frame, face):
         """Extract face embedding with optional CLAHE lighting normalization"""
         try:

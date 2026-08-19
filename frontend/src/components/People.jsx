@@ -26,6 +26,15 @@ function People() {
   const [newName, setNewName] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
 
+  // Photo upload modal state
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [personForPhoto, setPersonForPhoto] = useState(null);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoUploadMsg, setPhotoUploadMsg] = useState('');
+  const [photoUploadStatus, setPhotoUploadStatus] = useState('');
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -115,6 +124,65 @@ function People() {
       alert('Failed to rename person. Please try again.');
     } finally {
       setIsRenaming(false);
+    }
+  };
+
+  // Photo Upload Handlers
+  const handleAddPhotoClick = (person) => {
+    setPersonForPhoto(person);
+    setSelectedFile(null);
+    setFilePreview(null);
+    setPhotoUploadMsg('');
+    setPhotoUploadStatus('');
+    setShowPhotoModal(true);
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setFilePreview(URL.createObjectURL(file));
+      setPhotoUploadMsg('');
+      setPhotoUploadStatus('');
+    }
+  };
+
+  const handleUploadPhoto = async () => {
+    if (!personForPhoto || !selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    setIsUploadingPhoto(true);
+    setPhotoUploadMsg('⏳ Processing photo & extracting face embeddings...');
+    setPhotoUploadStatus('');
+
+    try {
+      const personId = personForPhoto.person_id || personForPhoto.id;
+      const response = await axios.post(`/api/people/${personId}/face-image`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+
+      if (response.data.success) {
+        setPhotoUploadStatus('success');
+        setPhotoUploadMsg(`✓ ${response.data.message}`);
+        await fetchData();
+        setTimeout(() => {
+          setShowPhotoModal(false);
+          setPersonForPhoto(null);
+          setSelectedFile(null);
+          setFilePreview(null);
+        }, 2200);
+      } else {
+        setPhotoUploadStatus('error');
+        setPhotoUploadMsg(`✕ ${response.data.message}`);
+      }
+    } catch (error) {
+      console.error('Error uploading face photo:', error);
+      setPhotoUploadStatus('error');
+      setPhotoUploadMsg('✕ Error uploading photo. Please try again.');
+    } finally {
+      setIsUploadingPhoto(false);
     }
   };
 
@@ -346,6 +414,13 @@ function People() {
                 {/* Actions Toolbar */}
                 <div className="card-actions-row">
                   <button
+                    className="btn-add-photo"
+                    title="Add Extra Face Photo Sample"
+                    onClick={() => handleAddPhotoClick(person)}
+                  >
+                    📸 Add Photo
+                  </button>
+                  <button
                     className="btn-rename"
                     title="Rename Person Name"
                     onClick={() => handleRenameClick(person)}
@@ -419,6 +494,13 @@ function People() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '6px' }}>
+                        <button
+                          className="btn-add-photo table-btn"
+                          title="Add Face Photo Sample"
+                          onClick={() => handleAddPhotoClick(person)}
+                        >
+                          📸 Photo
+                        </button>
                         <button
                           className="btn-rename table-btn"
                           title="Rename Person"
@@ -541,6 +623,71 @@ function People() {
                 disabled={isDeleting}
               >
                 {isDeleting ? 'Unregistering...' : 'Yes, Unregister'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Photo Upload Modal */}
+      {showPhotoModal && personForPhoto && (
+        <div className="modal-overlay">
+          <div className="modal-content photo-modal-content">
+            <div className="modal-header">
+              <h2>📸 Add Extra Face Photo Sample</h2>
+              <button className="close-btn" onClick={() => setShowPhotoModal(false)} disabled={isUploadingPhoto}>✕</button>
+            </div>
+            <div className="modal-body photo-modal-body">
+              <div className="photo-person-info">
+                <span className="person-id-badge">{personForPhoto.person_id || personForPhoto.id}</span>
+                <h3>{personForPhoto.name}</h3>
+                <span className="sample-count-info">
+                  Stored Embedding Samples: <strong>{hasMultiEmbeddings(personForPhoto)} / 5</strong>
+                </span>
+              </div>
+
+              {/* Upload Input & Preview Area */}
+              <div className="photo-upload-box">
+                {filePreview ? (
+                  <div className="photo-preview-container">
+                    <img src={filePreview} alt="Selected Face Preview" className="photo-preview-img" />
+                    <button className="btn-change-photo" onClick={() => { setSelectedFile(null); setFilePreview(null); }}>
+                      🔄 Choose Different Photo
+                    </button>
+                  </div>
+                ) : (
+                  <label className="photo-drop-zone">
+                    <input type="file" accept="image/*" onChange={handleFileSelect} style={{ display: 'none' }} />
+                    <div className="drop-zone-content">
+                      <span className="upload-icon">📷</span>
+                      <span className="upload-title">Click to Select Clear Face Photo</span>
+                      <span className="upload-subtitle">JPG, PNG or WEBP (Ensure 1 clear face under good lighting)</span>
+                    </div>
+                  </label>
+                )}
+              </div>
+
+              {/* Upload Status Notification */}
+              {photoUploadMsg && (
+                <div className={`photo-status-alert ${photoUploadStatus}`}>
+                  {photoUploadMsg}
+                </div>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button 
+                className="btn-secondary" 
+                onClick={() => setShowPhotoModal(false)} 
+                disabled={isUploadingPhoto}
+              >
+                Cancel
+              </button>
+              <button 
+                className="button button-primary" 
+                onClick={handleUploadPhoto} 
+                disabled={isUploadingPhoto || !selectedFile}
+              >
+                {isUploadingPhoto ? '⏳ Extracting Features...' : '✨ Upload & Extract Embedding'}
               </button>
             </div>
           </div>

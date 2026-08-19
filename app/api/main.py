@@ -4,7 +4,7 @@ import os
 # Add the recognition module to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'recognition'))
 
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -277,6 +277,18 @@ async def update_person_name(person_id: str, data: dict):
             add_event("MEMBERSHIP", f"Linked & Continued membership for {new_name} ({person_id})")
             return {"success": True, "message": f"Updated name to {new_name} & continued membership"}
         return {"success": False, "message": "Person ID not found"}
+    return {"success": False, "message": "Recognition service not available"}
+
+@app.post("/api/people/{person_id}/face-image")
+async def add_person_face_image(person_id: str, file: UploadFile = File(...)):
+    """Upload an additional face photo to extract embedding sample for a person"""
+    global recognition_service
+    if recognition_service:
+        image_bytes = await file.read()
+        result = recognition_service.add_person_face_image(person_id, image_bytes)
+        if result.get("success"):
+            add_event("REGISTRATION", f"Added new face sample photo for {person_id}")
+        return result
     return {"success": False, "message": "Recognition service not available"}
 
 @app.get("/api/attendance")
