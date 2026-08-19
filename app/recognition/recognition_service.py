@@ -470,7 +470,7 @@ class RecognitionService:
             best_track["last_seen_frame"] = frame_number
             
             age = frame_number - best_track["last_embed_frame"]
-            if age < recognition_config.TRACK_REFRESH_FRAMES:
+            if age < recognition_config.TRACK_REFRESH_FRAMES and best_track.get("confirmed", False):
                 needs_embedding = False
         else:
             # New face - create track
@@ -582,13 +582,15 @@ class RecognitionService:
                     
                     # Check Auto-Registration for Unknown Person
                     if (getattr(recognition_config, 'ENABLE_AUTO_REGISTER_UNKNOWN', True) and 
-                        confidence >= getattr(recognition_config, 'AUTO_REGISTER_MIN_CONFIDENCE', 0.80) and
-                        w >= getattr(recognition_config, 'AUTO_REGISTER_MIN_SIZE', 60) and
+                        not best_track.get("auto_registered", False) and
+                        confidence >= getattr(recognition_config, 'AUTO_REGISTER_MIN_CONFIDENCE', 0.70) and
+                        w >= getattr(recognition_config, 'AUTO_REGISTER_MIN_SIZE', 50) and
                         feature is not None):
                         
                         best_track["unknown_hits"] = best_track.get("unknown_hits", 0) + 1
                         if best_track["unknown_hits"] >= getattr(recognition_config, 'AUTO_REGISTER_REQUIRED_HITS', 3):
-                            new_id = self.generate_next_person_id()
+                            best_track["auto_registered"] = True
+                            new_id = self.generate_person_id(self.persons)
                             num = new_id.replace("P-", "")
                             new_name = f"Visitor #{int(num)}" if num.isdigit() else f"Visitor {new_id}"
                             

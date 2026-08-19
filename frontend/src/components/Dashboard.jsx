@@ -28,6 +28,8 @@ function Dashboard({ systemStatus }) {
   const [rtspUrl, setRtspUrl] = useState(DEFAULT_RTSP_URL);
   const [cameraName, setCameraName] = useState('');
   const [cameraStatus, setCameraStatus] = useState({ source: 'webcam', name: 'Webcam', status: 'disconnected' });
+  const [applyStatus, setApplyStatus] = useState(null); // null | 'applying' | 'success' | 'error'
+  const [applyMessage, setApplyMessage] = useState('');
 
   useEffect(() => {
     // Poll recognition state every 200ms for real-time updates
@@ -92,6 +94,8 @@ function Dashboard({ systemStatus }) {
 
   const applyCameraSource = async (sourceType) => {
     const selectedSource = sourceType || cameraSource;
+    setApplyStatus('applying');
+    setApplyMessage('');
     try {
       await axios.post('/api/camera/source', {
         source: selectedSource,
@@ -100,8 +104,21 @@ function Dashboard({ systemStatus }) {
       });
       const response = await axios.get('/api/camera/status');
       setCameraStatus(response.data);
+      
+      setApplyStatus('success');
+      const camNameStr = selectedSource === 'rtsp' && cameraName ? ` ("${cameraName}")` : '';
+      setApplyMessage(`RTSP Stream URL Applied & Configured Successfully!${camNameStr}`);
+      
+      setTimeout(() => {
+        setApplyStatus(null);
+      }, 4000);
     } catch (error) {
       console.error('Error applying camera source:', error);
+      setApplyStatus('error');
+      setApplyMessage('Failed to apply RTSP URL. Please check connection.');
+      setTimeout(() => {
+        setApplyStatus(null);
+      }, 4000);
     }
   };
 
@@ -242,14 +259,32 @@ function Dashboard({ systemStatus }) {
                     style={{ flex: 1 }}
                   />
                   <button
-                    className="button button-primary"
+                    className={`button ${applyStatus === 'success' ? 'button-success-applied' : 'button-primary'}`}
                     onClick={() => applyCameraSource('rtsp')}
-                    disabled={cameraRunning}
+                    disabled={cameraRunning || applyStatus === 'applying'}
+                    style={{ minWidth: '120px', transition: 'all 0.3s ease' }}
                   >
-                    APPLY URL
+                    {applyStatus === 'applying' && '⏳ APPLYING...'}
+                    {applyStatus === 'success' && '✓ APPLIED!'}
+                    {applyStatus === 'error' && '❌ ERROR'}
+                    {!applyStatus && '⚡ APPLY URL'}
                   </button>
                 </div>
               </div>
+
+              {/* Success / Error Feedback Banner */}
+              {applyStatus === 'success' && (
+                <div className="url-apply-toast success-toast">
+                  <span className="toast-icon">✨</span>
+                  <span className="toast-text">{applyMessage}</span>
+                </div>
+              )}
+              {applyStatus === 'error' && (
+                <div className="url-apply-toast error-toast">
+                  <span className="toast-icon">⚠️</span>
+                  <span className="toast-text">{applyMessage}</span>
+                </div>
+              )}
             </>
           )}
           

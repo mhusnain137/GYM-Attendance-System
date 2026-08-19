@@ -161,20 +161,45 @@ async def get_people():
         return recognition_service.get_registered_people()
     return []
 
+from datetime import datetime, timedelta
+
 @app.delete("/api/people/{person_id}")
 async def unregister_person(person_id: str):
-    """Unregister a person by ID"""
+    """Unregister face profile by ID and Auto-Freeze associated active memberships"""
     global recognition_service
     if recognition_service:
         result = recognition_service.unregister_person(person_id)
         if result["success"]:
-            add_event("REGISTRATION", f"Person unregistered: {person_id}")
+            # Auto-Freeze associated active membership
+            memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+            if os.path.exists(memberships_file):
+                try:
+                    with open(memberships_file, "r", encoding="utf-8") as f:
+                        memberships = json.load(f)
+                    if isinstance(memberships, list):
+                        today = time.strftime("%Y-%m-%d")
+                        for m in memberships:
+                            m_pid = (m.get("person_id") or "").lower()
+                            if m_pid == person_id.lower():
+                                if m.get("status") == "ACTIVE":
+                                    m["status"] = "FROZEN"
+                                    m["freeze_reason"] = "Auto-Frozen (Face Unregistered)"
+                                    m["frozen_at"] = today
+                                    m["notes"] = f"Auto-Frozen on {today} due to unregistration"
+                        temp_f = memberships_file + ".tmp"
+                        with open(temp_f, "w", encoding="utf-8") as f:
+                            json.dump(memberships, f, indent=4)
+                        os.replace(temp_f, memberships_file)
+                except Exception as e:
+                    print("Error auto-freezing membership:", e)
+
+            add_event("REGISTRATION", f"Face profile unregistered for {person_id} (Membership Auto-Frozen)")
         return result
     return {"success": False, "message": "Recognition service not available"}
 
 @app.put("/api/people/{person_id}")
 async def update_person_name(person_id: str, data: dict):
-    """Update person's name"""
+    """Update person's name, link memberships and Auto-Unfreeze if previously frozen"""
     global recognition_service
     if recognition_service:
         new_name = data.get("name", "").strip()
@@ -205,8 +230,52 @@ async def update_person_name(person_id: str, data: dict):
             if att_changed:
                 recognition_service.save_attendance(attendance)
             
-            add_event("REGISTRATION", f"Renamed {person_id} from '{old_name}' to '{new_name}'")
-            return {"success": True, "message": f"Updated name to {new_name}"}
+            # Auto-Unfreeze & link membership if matching name/id found
+            memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+            if os.path.exists(memberships_file):
+                try:
+                    with open(memberships_file, "r", encoding="utf-8") as f:
+                        memberships = json.load(f)
+                    if isinstance(memberships, list):
+                        today_dt = datetime.now()
+                        m_changed = False
+                        for m in memberships:
+                            m_name = (m.get("person_name") or "").lower()
+                            m_pid = (m.get("person_id") or "").lower()
+                            
+                            # Match by name or ID
+                            if new_name.lower() == m_name or person_id.lower() == m_pid or m_name in new_name.lower():
+                                m["person_id"] = person_id
+                                m["person_name"] = new_name
+                                m_changed = True
+                                
+                                # If frozen due to unregistration, unfreeze and extend expiry date!
+                                if m.get("status") == "FROZEN":
+                                    frozen_at_str = m.get("frozen_at") or m.get("updated_at", "").split("T")[0]
+                                    if frozen_at_str:
+                                        try:
+                                            frozen_dt = datetime.strptime(frozen_at_str[:10], "%Y-%m-%d")
+                                            days_frozen = max(0, (today_dt - frozen_dt).days)
+                                            if days_frozen > 0 and m.get("expiry_date"):
+                                                old_exp = datetime.strptime(m["expiry_date"], "%Y-%m-%d")
+                                                new_exp = old_exp + timedelta(days=days_frozen)
+                                                m["expiry_date"] = new_exp.strftime("%Y-%m-%d")
+                                        except Exception:
+                                            pass
+                                    m["status"] = "ACTIVE"
+                                    m["freeze_reason"] = ""
+                                    m["notes"] = f"Auto-Unfrozen & Continued on {today_dt.strftime('%Y-%m-%d')}"
+                        
+                        if m_changed:
+                            temp_f = memberships_file + ".tmp"
+                            with open(temp_f, "w", encoding="utf-8") as f:
+                                json.dump(memberships, f, indent=4)
+                            os.replace(temp_f, memberships_file)
+                except Exception as e:
+                    print("Error auto-unfreezing membership:", e)
+            
+            add_event("MEMBERSHIP", f"Linked & Continued membership for {new_name} ({person_id})")
+            return {"success": True, "message": f"Updated name to {new_name} & continued membership"}
         return {"success": False, "message": "Person ID not found"}
     return {"success": False, "message": "Recognition service not available"}
 
