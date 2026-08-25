@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
+import MemberProfileModal from './MemberProfileModal';
 import './Attendance.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -36,9 +37,13 @@ function Attendance() {
   
   // UI Controls state
   const [activeTab, setActiveTab] = useState('attendance'); // 'attendance' | 'visits'
+  const [viewMode, setViewMode] = useState('cards'); // 'cards' | 'table'
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'yesterday' | 'custom'
+  const [dateFilter, setDateFilter] = useState('all'); // 'all' | 'today' | 'yesterday' | 'week' | 'month' | 'custom'
   const [customDate, setCustomDate] = useState('');
+
+  // Profile Modal State
+  const [selectedProfilePerson, setSelectedProfilePerson] = useState(null); // { id, name }
 
   useEffect(() => {
     fetchData();
@@ -106,10 +111,30 @@ function Attendance() {
   };
 
   const matchesDateFilter = (recordDate) => {
-    if (dateFilter === 'today') return recordDate === getTodayStr();
+    if (!recordDate) return false;
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    
+    if (dateFilter === 'today') return recordDate === todayStr;
     if (dateFilter === 'yesterday') return recordDate === getYesterdayStr();
-    if (dateFilter === 'custom' && customDate) return recordDate === customDate;
-    return true;
+    
+    if (dateFilter === 'week') {
+      const recDate = new Date(recordDate + 'T00:00:00');
+      const diffTime = today - recDate;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      return diffDays >= 0 && diffDays <= 7;
+    }
+    
+    if (dateFilter === 'month') {
+      const currentYearMonth = todayStr.substring(0, 7); // 'YYYY-MM'
+      return recordDate.startsWith(currentYearMonth);
+    }
+    
+    if (dateFilter === 'custom' && customDate) {
+      return recordDate === customDate;
+    }
+    
+    return true; // 'all'
   };
 
   const matchesSearch = (personId, personName) => {
@@ -165,6 +190,11 @@ function Attendance() {
 
   const totalVisitsCount = filteredVisits.length;
 
+  // KPI Calculations
+  const todayStr = getTodayStr();
+  const todayVisitsList = visits.filter(v => v.date === todayStr);
+  const todayUniqueMembersCount = new Set(todayVisitsList.map(v => v.person_id)).size;
+
   const handleDeleteAttendance = async (record) => {
     if (!window.confirm(`Delete attendance record for ${record.name} on ${record.date}?`)) return;
     try {
@@ -186,6 +216,44 @@ function Attendance() {
         {info.badgeText}
       </span>
     );
+  };
+
+  // CSV Export Function
+  const exportToCSV = () => {
+    if (sortedVisitGroups.length === 0) {
+      alert('No visit records to export for this filter.');
+      return;
+    }
+
+    const headers = ['Person ID', 'Name', 'Date', 'First Detected', 'Last Sighting', 'Total Sightings', 'Camera Source', 'Membership Status'];
+    const rows = sortedVisitGroups.map(group => {
+      const attMatch = attendance.find(a => a.person_id === group.person_id && a.date === group.date);
+      const firstTime = attMatch ? attMatch.first_detected : group.visits[0]?.time;
+      const lastTime = group.visits[group.visits.length - 1]?.time || firstTime;
+      const camSource = group.visits[0]?.camera_source === 'rtsp' ? `CCTV (${group.visits[0]?.camera_name || 'Camera'})` : 'Webcam';
+      const mem = getPersonMembership(group.person_id, memberships, group.name);
+      const info = calculateMembershipInfo(mem);
+
+      return [
+        `"${group.person_id}"`,
+        `"${group.name}"`,
+        `"${group.date}"`,
+        `"${formatTime(firstTime)}"`,
+        `"${formatTime(lastTime)}"`,
+        `"${group.visits.length}"`,
+        `"${camSource}"`,
+        `"${info.label}"`
+      ];
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `gym_visits_report_${dateFilter}_${getTodayStr()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -222,6 +290,38 @@ function Attendance() {
         </button>
       </div>
 
+      {/* 📊 3-Card Simplified Top Summary Ribbon (Visits Page) */}
+      {activeTab === 'visits' && (
+        <div className="visits-kpi-ribbon">
+          <div className="kpi-card kpi-card-green">
+            <div className="kpi-icon-wrap">🟢</div>
+            <div className="kpi-content">
+              <span className="kpi-label">UNIQUE MEMBERS TODAY</span>
+              <h3 className="kpi-value">{todayUniqueMembersCount} <span className="kpi-unit">Members</span></h3>
+              <p className="kpi-subtext">Active distinct footfall today</p>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-card-blue">
+            <div className="kpi-icon-wrap">👥</div>
+            <div className="kpi-content">
+              <span className="kpi-label">TOTAL CAMERA SIGHTINGS</span>
+              <h3 className="kpi-value">{totalVisitsCount} <span className="kpi-unit">Appearances</span></h3>
+              <p className="kpi-subtext">Detection events in selected filter</p>
+            </div>
+          </div>
+
+          <div className="kpi-card kpi-card-amber">
+            <div className="kpi-icon-wrap">📋</div>
+            <div className="kpi-content">
+              <span className="kpi-label">MATCHING SESSIONS</span>
+              <h3 className="kpi-value">{sortedVisitGroups.length} <span className="kpi-unit">Records</span></h3>
+              <p className="kpi-subtext">Grouped member sessions</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search & Filter Toolbar */}
       <div className="card filter-toolbar">
         <div className="search-box">
@@ -257,6 +357,18 @@ function Attendance() {
           >
             Yesterday
           </button>
+          <button 
+            className={`filter-chip ${dateFilter === 'week' ? 'active' : ''}`}
+            onClick={() => setDateFilter('week')}
+          >
+            This Week
+          </button>
+          <button 
+            className={`filter-chip ${dateFilter === 'month' ? 'active' : ''}`}
+            onClick={() => setDateFilter('month')}
+          >
+            This Month
+          </button>
           <div className="custom-date-picker">
             <input 
               type="date"
@@ -266,9 +378,40 @@ function Attendance() {
                 setCustomDate(e.target.value);
                 setDateFilter('custom');
               }}
+              title="Filter by custom date"
             />
           </div>
         </div>
+
+        {/* Dual View Toggle & CSV Export for Visits Tab */}
+        {activeTab === 'visits' && (
+          <div className="visits-toolbar-actions">
+            <div className="view-toggle-group">
+              <button 
+                className={`view-toggle-btn ${viewMode === 'cards' ? 'active' : ''}`}
+                onClick={() => setViewMode('cards')}
+                title="Cards Grid View"
+              >
+                🪟 Cards
+              </button>
+              <button 
+                className={`view-toggle-btn ${viewMode === 'table' ? 'active' : ''}`}
+                onClick={() => setViewMode('table')}
+                title="Data Table View"
+              >
+                📊 Table
+              </button>
+            </div>
+
+            <button 
+              className="btn-export-csv"
+              onClick={exportToCSV}
+              title="Download filtered records as CSV/Excel"
+            >
+              📥 Export CSV
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -294,18 +437,26 @@ function Attendance() {
                 </div>
                 <div className="attendance-records-grid">
                   {groupedAttendance[date].map((record, index) => (
-                    <div key={index} className="attendance-record-card">
+                    <div 
+                      key={index} 
+                      className="attendance-record-card"
+                      onClick={() => setSelectedProfilePerson({ id: record.person_id, name: record.name })}
+                      style={{ cursor: 'pointer' }}
+                    >
                       <div className="record-header">
                         <div className="record-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <PersonAvatar name={record.name} personId={record.person_id} size={40} />
-                          <span className="record-name">{record.name}</span>
+                          <div>
+                            <span className="record-name">{record.name}</span>
+                            <span className="record-pid-sub">({record.person_id})</span>
+                          </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span className="status-badge present">Present</span>
                           <button
                             className="btn-icon-delete"
                             title="Delete Attendance Record"
-                            onClick={() => handleDeleteAttendance(record)}
+                            onClick={(e) => { e.stopPropagation(); handleDeleteAttendance(record); }}
                           >
                             🗑️
                           </button>
@@ -313,10 +464,6 @@ function Attendance() {
                       </div>
 
                       <div className="record-details">
-                        <div className="record-detail">
-                          <span className="detail-label">Person ID:</span>
-                          <span className="detail-value highlight">{record.person_id}</span>
-                        </div>
                         <div className="record-detail">
                           <span className="detail-label">Gym Membership:</span>
                           {renderMembershipBadge(record.person_id, record.name)}
@@ -340,36 +487,56 @@ function Attendance() {
           </div>
         )
       ) : (
-        /* ================= VISIT HISTORY TAB ================= */
+        /* ================= VISIT HISTORY TAB (DUAL VIEWS) ================= */
         sortedVisitGroups.length === 0 ? (
           <div className="no-events">
             <div className="no-events-icon">⏱️</div>
             <p>No visit tracking records found for this search / filter.</p>
           </div>
-        ) : (
+        ) : viewMode === 'cards' ? (
+          /* Style A: 🪟 Session Cards View (Visual & Modern Grid) */
           <div className="visits-list">
             {sortedVisitGroups.map((group, groupIdx) => {
               const attMatch = attendance.find(
                 a => a.person_id === group.person_id && a.date === group.date
               );
               const firstTime = attMatch ? attMatch.first_detected : group.visits[0]?.time;
+              const lastTime = group.visits[group.visits.length - 1]?.time || firstTime;
 
               return (
-                <div key={groupIdx} className="card visit-person-card">
+                <div 
+                  key={groupIdx} 
+                  className="card visit-person-card clickable-session-card"
+                  onClick={() => setSelectedProfilePerson({ id: group.person_id, name: group.name })}
+                >
                   <div className="visit-card-header">
                     <div className="visit-person-info">
-                      <PersonAvatar name={group.name} personId={group.person_id} size={48} />
+                      <PersonAvatar name={group.name} personId={group.person_id} size={50} />
                       <div>
-                        <h3 className="visit-person-name">{group.name}</h3>
-                        <span className="visit-person-id">ID: {group.person_id}</span>
+                        <div className="visit-name-row">
+                          <h3 className="visit-person-name">{group.name}</h3>
+                          <span className="visit-person-id">{group.person_id}</span>
+                        </div>
+                        <div className="visit-header-tags">
+                          {renderMembershipBadge(group.person_id, group.name)}
+                          <span className="visit-cam-tag">
+                            {group.visits[0]?.camera_source === 'rtsp' ? `📹 CCTV` : '📷 Webcam'}
+                          </span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="visit-summary-badges">
-                      {renderMembershipBadge(group.person_id, group.name)}
                       <span className="visit-date-badge">📅 {formatDate(group.date)}</span>
                       <span className="first-time-badge">⭐ First In: {formatTime(firstTime)}</span>
-                      <span className="visit-count-badge">🔄 Total Appearances: {group.visits.length}</span>
+                      <span className="last-time-badge">🚪 Last Seen: {formatTime(lastTime)}</span>
+                      <span className="visit-count-badge">🔄 Total Sightings: {group.visits.length}</span>
+                      <button 
+                        className="btn-card-profile" 
+                        onClick={(e) => { e.stopPropagation(); setSelectedProfilePerson({ id: group.person_id, name: group.name }); }}
+                      >
+                        👁️ Profile
+                      </button>
                     </div>
                   </div>
 
@@ -390,7 +557,88 @@ function Attendance() {
               );
             })}
           </div>
+        ) : (
+          /* Style B: 📊 Audit Data Table View (Tabular Format) */
+          <div className="card audit-table-container">
+            <table className="audit-table">
+              <thead>
+                <tr>
+                  <th>MEMBER</th>
+                  <th>DATE</th>
+                  <th>FIRST DETECTED</th>
+                  <th>LAST SIGHTING</th>
+                  <th>TOTAL SIGHTINGS</th>
+                  <th>MEMBERSHIP</th>
+                  <th>CAMERA</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sortedVisitGroups.map((group, groupIdx) => {
+                  const attMatch = attendance.find(
+                    a => a.person_id === group.person_id && a.date === group.date
+                  );
+                  const firstTime = attMatch ? attMatch.first_detected : group.visits[0]?.time;
+                  const lastTime = group.visits[group.visits.length - 1]?.time || firstTime;
+
+                  return (
+                    <tr 
+                      key={groupIdx} 
+                      className="audit-row"
+                      onClick={() => setSelectedProfilePerson({ id: group.person_id, name: group.name })}
+                    >
+                      <td>
+                        <div className="audit-member-cell">
+                          <PersonAvatar name={group.name} personId={group.person_id} size={36} />
+                          <div>
+                            <strong className="audit-member-name">{group.name}</strong>
+                            <span className="audit-member-id">{group.person_id}</span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="audit-date-cell">{formatDate(group.date)}</td>
+                      <td className="audit-time-cell">
+                        <span className="time-pill first">⭐ {formatTime(firstTime)}</span>
+                      </td>
+                      <td className="audit-time-cell">
+                        <span className="time-pill last">🚪 {formatTime(lastTime)}</span>
+                      </td>
+                      <td>
+                        <span className="sightings-pill">
+                          🔄 {group.visits.length} {group.visits.length === 1 ? 'sighting' : 'sightings'}
+                        </span>
+                      </td>
+                      <td>{renderMembershipBadge(group.person_id, group.name)}</td>
+                      <td>
+                        <span className="audit-cam-badge">
+                          {group.visits[0]?.camera_source === 'rtsp' ? '📹 CCTV' : '📷 Webcam'}
+                        </span>
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-audit-profile" 
+                          onClick={(e) => { e.stopPropagation(); setSelectedProfilePerson({ id: group.person_id, name: group.name }); }}
+                          title="View Member Profile & Calendar"
+                        >
+                          👁️ Profile
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )
+      )}
+
+      {/* Member Detailed Profile & Workout Calendar Heatmap Modal */}
+      {selectedProfilePerson && (
+        <MemberProfileModal
+          personId={selectedProfilePerson.id}
+          personName={selectedProfilePerson.name}
+          onClose={() => setSelectedProfilePerson(null)}
+        />
       )}
     </div>
   );
