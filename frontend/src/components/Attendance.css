@@ -871,3 +871,43 @@
   background: var(--c-mocha);
   color: #FFFFFF;
 }
+
+.btn-card-delete {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-card-delete:hover {
+  background: #ef4444;
+  color: #FFFFFF;
+  transform: scale(1.06);
+}
+
+.audit-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-audit-delete {
+  padding: 5px 10px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1.5px solid rgba(239, 68, 68, 0.35);
+  color: #ef4444;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.btn-audit-delete:hover {
+  background: #ef4444;
+  color: #FFFFFF;
+  transform: scale(1.05);
+}

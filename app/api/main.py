@@ -520,6 +520,31 @@ async def delete_attendance(person_id: str, date: str):
         return {"status": "success", "message": "Attendance record deleted"}
     return {"status": "error", "message": "Recognition service not available"}
 
+@app.delete("/api/visits")
+async def delete_visit(person_id: str, date: str, time: str = None):
+    """Delete visit records for a person on a specific date (or specific time if provided)"""
+    global recognition_service
+    if recognition_service and hasattr(recognition_service, 'load_visits'):
+        visits = recognition_service.load_visits()
+        if time:
+            updated = [v for v in visits if not (v.get("person_id") == person_id and v.get("date") == date and v.get("time") == time)]
+        else:
+            updated = [v for v in visits if not (v.get("person_id") == person_id and v.get("date") == date)]
+        recognition_service.save_visits(updated)
+        add_event("VISITS", f"Deleted visit record for {person_id} on {date}")
+        return {"status": "success", "message": "Visit record deleted"}
+    return {"status": "error", "message": "Recognition service not available"}
+
+@app.delete("/api/visits/clear")
+async def clear_all_visits():
+    """Clear all visit records"""
+    global recognition_service
+    if recognition_service and hasattr(recognition_service, 'save_visits'):
+        recognition_service.save_visits([])
+        add_event("VISITS", "Cleared all visit history logs")
+        return {"status": "success", "message": "All visit records cleared"}
+    return {"status": "error", "message": "Recognition service not available"}
+
 @app.post("/api/camera/start")
 async def start_camera():
     """Start the camera"""

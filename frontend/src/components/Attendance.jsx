@@ -208,6 +208,20 @@ function Attendance() {
     }
   };
 
+  const handleDeleteVisit = async (group, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(`Delete all visit history for ${group.name} on ${group.date}?`)) return;
+    try {
+      await axios.delete('/api/visits', {
+        params: { person_id: group.person_id, date: group.date }
+      });
+      fetchData(false);
+    } catch (error) {
+      console.error('Error deleting visit record:', error);
+      alert('Failed to delete visit record');
+    }
+  };
+
   const renderMembershipBadge = (personId, personName = '') => {
     const mem = getPersonMembership(personId, memberships, personName);
     const info = calculateMembershipInfo(mem);
@@ -537,6 +551,13 @@ function Attendance() {
                       >
                         👁️ Profile
                       </button>
+                      <button 
+                        className="btn-card-delete" 
+                        onClick={(e) => handleDeleteVisit(group, e)}
+                        title="Delete visit history for this date"
+                      >
+                        🗑️
+                      </button>
                     </div>
                   </div>
 
@@ -615,13 +636,22 @@ function Attendance() {
                         </span>
                       </td>
                       <td>
-                        <button 
-                          className="btn-audit-profile" 
-                          onClick={(e) => { e.stopPropagation(); setSelectedProfilePerson({ id: group.person_id, name: group.name }); }}
-                          title="View Member Profile & Calendar"
-                        >
-                          👁️ Profile
-                        </button>
+                        <div className="audit-actions-group">
+                          <button 
+                            className="btn-audit-profile" 
+                            onClick={(e) => { e.stopPropagation(); setSelectedProfilePerson({ id: group.person_id, name: group.name }); }}
+                            title="View Member Profile & Calendar"
+                          >
+                            👁️ Profile
+                          </button>
+                          <button 
+                            className="btn-audit-delete" 
+                            onClick={(e) => handleDeleteVisit(group, e)}
+                            title="Delete visit history"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
