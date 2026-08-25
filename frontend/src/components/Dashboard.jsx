@@ -1,6 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
+import ExpiredAlertBanner from './ExpiredAlertBanner';
+import LiveEntryToast from './LiveEntryToast';
+import AnalyticsGraphs from './AnalyticsGraphs';
+import MemberProfileModal from './MemberProfileModal';
 import '../App.css';
 import './Dashboard.css';
 
@@ -12,7 +16,8 @@ function Dashboard({ systemStatus }) {
     faces_detected: 0,
     active_tracks: 0,
     registered_people: 0,
-    people: []
+    people: [],
+    active_alerts: []
   });
   const [showRegistrationModal, setShowRegistrationModal] = useState(false);
   const [registrationName, setRegistrationName] = useState('');
@@ -21,6 +26,16 @@ function Dashboard({ systemStatus }) {
   const [todayVisits, setTodayVisits] = useState([]);
   const [memberships, setMemberships] = useState([]);
   
+  // Alert & Toast States
+  const [currentAlert, setCurrentAlert] = useState(null);
+  const [dismissedAlertPid, setDismissedAlertPid] = useState(null);
+  const [liveToasts, setLiveToasts] = useState([]);
+  const recentToastsRef = useRef({});
+  const isFirstPollRef = useRef(true);
+
+  // Profile Modal State
+  const [selectedProfilePerson, setSelectedProfilePerson] = useState(null); // { id, name }
+
   const DEFAULT_RTSP_URL = 'rtsp://admin:12345abc@192.168.2.253:554/cam/realmonitor?channel=2&subtype=0';
 
   // Camera source state
@@ -36,15 +51,68 @@ function Dashboard({ systemStatus }) {
     const interval = setInterval(async () => {
       try {
         const response = await axios.get('/api/state');
-        setRecognitionState(response.data);
-        setCameraRunning(response.data.camera);
+        const data = response.data || {};
+        setRecognitionState(data);
+        setCameraRunning(!!data.camera);
+
+        if (!data.camera) {
+          // Camera is stopped or offline: clear any active alert banners and toasts
+          setCurrentAlert(null);
+          setLiveToasts([]);
+          return;
+        }
+
+        // Check for active alerts while camera is running
+        if (data.active_alerts && data.active_alerts.length > 0) {
+          const topAlert = data.active_alerts[0];
+          if (topAlert.person_id !== dismissedAlertPid) {
+            setCurrentAlert(topAlert);
+          }
+        } else {
+          setCurrentAlert(null);
+        }
+
+        // Check for confirmed person to trigger live arrival toast
+        if (data.people && data.people.length > 0) {
+          const now = Date.now();
+          if (isFirstPollRef.current) {
+            // Seed recentToasts on initial load so page refresh doesn't trigger duplicate popups
+            data.people.forEach(p => {
+              if (p.person_id) {
+                recentToastsRef.current[p.person_id] = now;
+              }
+            });
+            isFirstPollRef.current = false;
+          } else {
+            data.people.forEach(p => {
+              if (p.confirmed && p.person_id && p.person_id !== 'Unknown') {
+                const lastToasted = recentToastsRef.current[p.person_id] || 0;
+                if (now - lastToasted > 12000) { // 12 second throttle per member
+                  recentToastsRef.current[p.person_id] = now;
+                  const newToast = {
+                    id: p.person_id,
+                    person_id: p.person_id,
+                    name: p.name,
+                    plan_name: p.plan_name,
+                    membership_status: p.membership_status,
+                    days_left: p.days_left,
+                    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                  };
+                  setLiveToasts(prev => [newToast, ...prev.slice(0, 2)]);
+                }
+              }
+            });
+          }
+        } else {
+          isFirstPollRef.current = false;
+        }
       } catch (error) {
         console.error('Error fetching state:', error);
       }
     }, 200);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [dismissedAlertPid]);
 
   useEffect(() => {
     const fetchAttendanceVisitsAndMemberships = async () => {
@@ -191,14 +259,32 @@ function Dashboard({ systemStatus }) {
 
   return (
     <div className="dashboard">
+      {/* Live Arrival Floating Toast Queue */}
+      <div className="live-entry-toast-container">
+        {liveToasts.map(toast => (
+          <LiveEntryToast
+            key={`${toast.id}-${toast.time}`}
+            entry={toast}
+            onProfileClick={(pid, name) => setSelectedProfilePerson({ id: pid, name })}
+            onDismiss={(pid) => setLiveToasts(prev => prev.filter(t => t.id !== pid))}
+          />
+        ))}
+      </div>
+
+      {/* Page Header */}
       <div className="dashboard-header">
-        <h1>DASHBOARD</h1>
+        <div>
+          <h1>GYM DASHBOARD</h1>
+          <p style={{ color: 'var(--c-slate-light)', fontSize: '0.88rem', fontWeight: 600, marginTop: '2px' }}>
+            Live Stream, Face Recognition & Today's Attendance Feed
+          </p>
+        </div>
         <div className="camera-controls">
           <button
             className={`button ${cameraRunning ? 'button-danger' : 'button-success'}`}
             onClick={cameraRunning ? stopCamera : startCamera}
           >
-            {cameraRunning ? 'STOP CAMERA' : 'START CAMERA'}
+            {cameraRunning ? '⏹ STOP CAMERA' : '▶ START CAMERA'}
           </button>
           <button
             className="button button-primary"
@@ -210,99 +296,130 @@ function Dashboard({ systemStatus }) {
         </div>
       </div>
 
+      {/* Live Expired / Frozen Member Alert Banner */}
+      {currentAlert && (
+        <ExpiredAlertBanner
+          alertData={currentAlert}
+          onRenewClick={(alert) => setSelectedProfilePerson({ id: alert.person_id, name: alert.name })}
+          onDismiss={() => {
+            setDismissedAlertPid(currentAlert?.person_id);
+            setCurrentAlert(null);
+          }}
+        />
+      )}
+
       {registrationStatus && (
-        <div className="registration-status">
+        <div className="card" style={{ padding: '14px 20px', background: 'var(--c-mocha-light)', borderColor: 'var(--c-mocha)', color: 'var(--c-mocha)', fontWeight: 700, textAlign: 'center' }}>
           {registrationStatus}
         </div>
       )}
 
-      {/* Camera Source Selector */}
-      <div className="card">
-        <h2>CAMERA SOURCE</h2>
-        <div className="camera-source-section">
-          <div className="form-group">
-            <label>Source:</label>
-            <select
-              className="input"
-              value={cameraSource}
-              onChange={(e) => handleCameraSourceChange(e.target.value)}
-              disabled={cameraRunning}
-            >
-              <option value="webcam">Webcam</option>
-              <option value="rtsp">CCTV / RTSP</option>
-            </select>
-          </div>
-          
-          {cameraSource === 'rtsp' && (
-            <>
-              <div className="form-group">
-                <label>Camera Name (Optional):</label>
-                <input
-                  type="text"
-                  className="input"
-                  placeholder="Put Camera Name"
-                  value={cameraName}
-                  onChange={(e) => setCameraName(e.target.value)}
-                  disabled={cameraRunning}
-                />
-              </div>
-              <div className="form-group">
-                <label>RTSP URL:</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+      {/* Main Grid: Left Video Stream & Right Feeds */}
+      <div className="dashboard-grid">
+        {/* Left Column */}
+        <div className="camera-section">
+          {/* Camera Source Selector Box */}
+          <div className="card camera-source-panel">
+            <h2>⚙️ CAMERA CONFIGURATION & RTSP SOURCE</h2>
+
+            <div className="source-toggle-group">
+              <button
+                type="button"
+                className={`source-toggle-btn ${cameraSource === 'webcam' ? 'active' : ''}`}
+                onClick={() => handleCameraSourceChange('webcam')}
+                disabled={cameraRunning}
+              >
+                📷 Local Laptop / USB Webcam
+              </button>
+              <button
+                type="button"
+                className={`source-toggle-btn ${cameraSource === 'rtsp' ? 'active' : ''}`}
+                onClick={() => handleCameraSourceChange('rtsp')}
+                disabled={cameraRunning}
+              >
+                📹 CCTV / IP Camera (RTSP)
+              </button>
+            </div>
+
+            {cameraSource === 'rtsp' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '12px' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--c-slate)' }}>Camera Label (Optional):</label>
                   <input
                     type="text"
                     className="input"
-                    placeholder="rtsp://admin:12345abc@192.168.2.253:554/cam/realmonitor?channel=2&subtype=0"
-                    value={rtspUrl}
-                    onChange={(e) => setRtspUrl(e.target.value)}
+                    placeholder="e.g. Gym Main Gate Camera"
+                    value={cameraName}
+                    onChange={(e) => setCameraName(e.target.value)}
                     disabled={cameraRunning}
-                    style={{ flex: 1 }}
                   />
-                  <button
-                    className={`button ${applyStatus === 'success' ? 'button-success-applied' : 'button-primary'}`}
-                    onClick={() => applyCameraSource('rtsp')}
-                    disabled={cameraRunning || applyStatus === 'applying'}
-                    style={{ minWidth: '120px', transition: 'all 0.3s ease' }}
-                  >
-                    {applyStatus === 'applying' && '⏳ APPLYING...'}
-                    {applyStatus === 'success' && '✓ APPLIED!'}
-                    {applyStatus === 'error' && '❌ ERROR'}
-                    {!applyStatus && '⚡ APPLY URL'}
-                  </button>
                 </div>
+
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--c-slate)' }}>RTSP Network Stream URL:</label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <input
+                      type="text"
+                      className="input"
+                      placeholder="rtsp://admin:password@ip:554/cam/realmonitor?channel=1"
+                      value={rtspUrl}
+                      onChange={(e) => setRtspUrl(e.target.value)}
+                      disabled={cameraRunning}
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      className="button button-primary"
+                      onClick={() => applyCameraSource('rtsp')}
+                      disabled={cameraRunning || applyStatus === 'applying'}
+                      style={{ minWidth: '130px' }}
+                    >
+                      {applyStatus === 'applying' && '⏳ APPLYING...'}
+                      {applyStatus === 'success' && '✓ SAVED!'}
+                      {applyStatus === 'error' && '❌ FAILED'}
+                      {!applyStatus && '⚡ APPLY URL'}
+                    </button>
+                  </div>
+                </div>
+
+                {applyStatus === 'success' && (
+                  <div className="url-apply-toast success-toast">
+                    <span>✨</span>
+                    <span>{applyMessage}</span>
+                  </div>
+                )}
+                {applyStatus === 'error' && (
+                  <div className="url-apply-toast error-toast">
+                    <span>⚠️</span>
+                    <span>{applyMessage}</span>
+                  </div>
+                )}
               </div>
+            )}
 
-              {/* Success / Error Feedback Banner */}
-              {applyStatus === 'success' && (
-                <div className="url-apply-toast success-toast">
-                  <span className="toast-icon">✨</span>
-                  <span className="toast-text">{applyMessage}</span>
-                </div>
-              )}
-              {applyStatus === 'error' && (
-                <div className="url-apply-toast error-toast">
-                  <span className="toast-icon">⚠️</span>
-                  <span className="toast-text">{applyMessage}</span>
-                </div>
-              )}
-            </>
-          )}
-          
-          <div className="camera-status-display">
-            <span className={`status-indicator ${cameraStatus.status === 'connected' ? 'online' : 'offline'}`}>
-              {cameraStatus.status === 'connected' ? '●' : '○'}
-            </span>
-            <span className="camera-status-text">
-              {cameraStatus.name} - {cameraStatus.status.toUpperCase()}
-            </span>
+            <div className="camera-status-bar">
+              <span className="camera-status-indicator">
+                <span className={`status-dot ${cameraStatus.status === 'connected' ? 'active' : ''}`} />
+                <span>Active Device: {cameraStatus.name} ({cameraStatus.source.toUpperCase()})</span>
+              </span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--c-mocha)' }}>
+                {cameraStatus.status === 'connected' ? 'CONNECTED & READY' : 'OFFLINE'}
+              </span>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <div className="dashboard-grid">
-        <div className="camera-section">
+          {/* Live Camera Box */}
           <div className="card camera-card">
-            <h2>LIVE CAMERA - {cameraStatus.name}</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2>
+                <span>📹 LIVE FEED</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--c-slate-light)', fontWeight: 600 }}>({cameraStatus.name})</span>
+              </h2>
+              <div className="status-pill-badge" style={{ padding: '4px 12px' }}>
+                <span className={`status-dot ${cameraRunning ? 'active' : ''}`} />
+                <span>{cameraRunning ? 'STREAMING' : 'IDLE'}</span>
+              </div>
+            </div>
+
             <div className="camera-container">
               {cameraRunning ? (
                 <img
@@ -313,109 +430,134 @@ function Dashboard({ systemStatus }) {
               ) : (
                 <div className="camera-placeholder">
                   <div className="placeholder-icon">📷</div>
-                  <p>Camera is offline</p>
-                  <p className="placeholder-hint">Click "START CAMERA" to begin</p>
+                  <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#E2E8F0' }}>Camera is Offline</p>
+                  <p className="placeholder-hint">Click "START CAMERA" to begin live AI facial detection</p>
                 </div>
               )}
             </div>
           </div>
-
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-icon">📅</div>
-              <div className="stat-value">{todayAttendance.length}</div>
-              <div className="stat-label">Attendance Today</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">⏱️</div>
-              <div className="stat-value">{todayVisits.length}</div>
-              <div className="stat-label">Visits Today</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">●</div>
-              <div className="stat-value">{recognitionState.active_tracks}</div>
-              <div className="stat-label">Active Tracks</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">📊</div>
-              <div className="stat-value">{recognitionState.fps.toFixed(1)}</div>
-              <div className="stat-label">FPS</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-icon">👥</div>
-              <div className="stat-value">{recognitionState.registered_people}</div>
-              <div className="stat-label">Registered</div>
-            </div>
-          </div>
         </div>
 
+        {/* Right Column */}
         <div className="sidebar-section">
-          <div className="card system-status-card">
-            <h2>SYSTEM STATUS</h2>
-            <div className="status-list">
-              <div className="status-item">
-                <span className="status-label">Camera</span>
-                <span className={`status-value ${cameraRunning ? 'online' : 'offline'}`}>
-                  {cameraRunning ? 'ONLINE' : 'OFFLINE'}
-                </span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">YuNet</span>
-                <span className="status-value online">READY</span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">SFace</span>
-                <span className="status-value online">READY</span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">Database</span>
-                <span className="status-value online">READY</span>
-              </div>
-              <div className="status-item">
-                <span className="status-label">Tracking</span>
-                <span className={`status-value ${cameraRunning ? 'online' : 'offline'}`}>
-                  {cameraRunning ? 'ACTIVE' : 'INACTIVE'}
-                </span>
-              </div>
-            </div>
-          </div>
-
+          {/* Today's Attendance Feed Card */}
           <div className="card detected-people-card">
-            <h2>TODAY'S ATTENDANCE <span className="count">{todayAttendance.length}</span></h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <h2>📅 TODAY'S LOGS</h2>
+              <span className="count-badge">{todayAttendance.length} Entries</span>
+            </div>
+
             <div className="detected-people-list">
               {todayAttendance.length === 0 ? (
-                <div className="no-detections">
-                  <div className="no-detections-icon">📅</div>
-                  <p>No attendance recorded today</p>
+                <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--c-slate-light)' }}>
+                  <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>📋</div>
+                  <p style={{ fontWeight: 700, color: 'var(--c-slate)' }}>No Attendance Yet Today</p>
+                  <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>Members passing the camera will appear here</p>
                 </div>
               ) : (
                 todayAttendance.map((record, index) => (
-                  <div key={index} className="person-card">
-                    <div className="person-header">
-                      <span className="person-status-icon">✓</span>
-                      <span className="person-name">{record.name}</span>
+                  <div 
+                    key={index} 
+                    className="person-card-compact"
+                    style={{ cursor: 'pointer' }}
+                    onClick={() => setSelectedProfilePerson({ id: record.person_id, name: record.name })}
+                    title="Click to view Member Workout Heatmap & Profile"
+                  >
+                    <div className="person-compact-avatar">
+                      {record.name ? record.name.charAt(0).toUpperCase() : '👤'}
                     </div>
-                    <div className="person-details">
-                      <div className="person-detail">
-                        <span className="detail-label">ID:</span>
-                        <span className="detail-value">{record.person_id}</span>
+                    <div className="person-compact-info">
+                      <div className="person-compact-name">{record.name}</div>
+                      <div className="person-compact-meta">
+                        <span>🆔 {record.person_id}</span>
+                        <span>•</span>
+                        <span>⏱️ {record.first_detected}</span>
                       </div>
-                      <div className="person-detail">
-                        <span className="detail-label">First Time:</span>
-                        <span className="detail-value">{record.first_detected}</span>
-                      </div>
-                      <div className="person-detail">
-                        <span className="detail-label">Gym Pass:</span>
-                        {renderMembershipBadge(record.person_id)}
-                      </div>
+                    </div>
+                    <div>
+                      {renderMembershipBadge(record.person_id)}
                     </div>
                   </div>
                 ))
               )}
             </div>
           </div>
+
+          {/* System AI Health Monitor Card */}
+          <div className="card">
+            <h2>🧠 AI SYSTEM HEALTH</h2>
+            <div className="system-status-list">
+              <div className="system-status-item">
+                <span className="system-status-label">Face Detector (YuNet)</span>
+                <span className="system-status-pill ready">READY (ONNX)</span>
+              </div>
+              <div className="system-status-item">
+                <span className="system-status-label">Feature Extractor (SFace)</span>
+                <span className="system-status-pill ready">READY (128-D)</span>
+              </div>
+              <div className="system-status-item">
+                <span className="system-status-label">Camera Video Engine</span>
+                <span className={`system-status-pill ${cameraRunning ? 'active' : 'offline'}`}>
+                  {cameraRunning ? 'ONLINE' : 'STOPPED'}
+                </span>
+              </div>
+              <div className="system-status-item">
+                <span className="system-status-label">IoU Face Tracker</span>
+                <span className={`system-status-pill ${cameraRunning ? 'active' : 'offline'}`}>
+                  {cameraRunning ? `${recognitionState.active_tracks} ACTIVE` : 'INACTIVE'}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* 4-Card Hero Stats Ribbon */}
+      <div className="stats-ribbon">
+        <div className="stat-ribbon-card">
+          <div className="stat-ribbon-icon-box sage">📅</div>
+          <div className="stat-ribbon-info">
+            <span className="stat-ribbon-value">{todayAttendance.length}</span>
+            <span className="stat-ribbon-label">Today's Attendance</span>
+          </div>
+        </div>
+
+        <div className="stat-ribbon-card">
+          <div className="stat-ribbon-icon-box mocha">⏱️</div>
+          <div className="stat-ribbon-info">
+            <span className="stat-ribbon-value">{todayVisits.length}</span>
+            <span className="stat-ribbon-label">Total Sightings</span>
+          </div>
+        </div>
+
+        <div className="stat-ribbon-card">
+          <div className="stat-ribbon-icon-box slate">👥</div>
+          <div className="stat-ribbon-info">
+            <span className="stat-ribbon-value">{recognitionState.registered_people || systemStatus.registered_people || 0}</span>
+            <span className="stat-ribbon-label">Registered Members</span>
+          </div>
+        </div>
+
+        <div className="stat-ribbon-card">
+          <div className="stat-ribbon-icon-box ochre">⚡</div>
+          <div className="stat-ribbon-info">
+            <span className="stat-ribbon-value">{recognitionState.fps.toFixed(1)} <span style={{ fontSize: '0.9rem', color: 'var(--c-slate-light)' }}>FPS</span></span>
+            <span className="stat-ribbon-label">{recognitionState.active_tracks} Active Faces</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Live Financial & Peak Workout Analytics Graphs Section */}
+      <AnalyticsGraphs />
+
+      {/* Detailed Member Profile & Calendar Heatmap Modal */}
+      {selectedProfilePerson && (
+        <MemberProfileModal
+          personId={selectedProfilePerson.id}
+          personName={selectedProfilePerson.name}
+          onClose={() => setSelectedProfilePerson(null)}
+        />
+      )}
 
       {/* Registration Modal */}
       {showRegistrationModal && (

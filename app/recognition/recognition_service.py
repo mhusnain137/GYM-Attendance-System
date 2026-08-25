@@ -111,7 +111,9 @@ class RecognitionService:
             "min_match_margin": recognition_config.MIN_MATCH_MARGIN,
             "weak_match_required_hits": recognition_config.WEAK_MATCH_REQUIRED_HITS,
             "track_refresh_frames": recognition_config.TRACK_REFRESH_FRAMES,
-            "track_max_missed_frames": recognition_config.TRACK_MAX_MISSED_FRAMES
+            "track_max_missed_frames": recognition_config.TRACK_MAX_MISSED_FRAMES,
+            "enable_auto_register_unknown": getattr(recognition_config, 'ENABLE_AUTO_REGISTER_UNKNOWN', True),
+            "auto_register_required_hits": getattr(recognition_config, 'AUTO_REGISTER_REQUIRED_HITS', 3)
         }
         
         # Set CPU threads
@@ -836,14 +838,19 @@ class RecognitionService:
                     best_track["confirmed"] = False
                     
                     # Check Auto-Registration for Unknown Person
-                    if (getattr(recognition_config, 'ENABLE_AUTO_REGISTER_UNKNOWN', True) and 
+                    enable_auto = getattr(recognition_config, 'ENABLE_AUTO_REGISTER_UNKNOWN', True)
+                    min_conf = getattr(recognition_config, 'AUTO_REGISTER_MIN_CONFIDENCE', 0.65)
+                    min_size = getattr(recognition_config, 'AUTO_REGISTER_MIN_SIZE', 45)
+                    req_hits = getattr(recognition_config, 'AUTO_REGISTER_REQUIRED_HITS', 3)
+                    
+                    if (enable_auto and 
                         not best_track.get("auto_registered", False) and
-                        confidence >= getattr(recognition_config, 'AUTO_REGISTER_MIN_CONFIDENCE', 0.70) and
-                        w >= getattr(recognition_config, 'AUTO_REGISTER_MIN_SIZE', 50) and
+                        confidence >= min_conf and
+                        w >= min_size and
                         feature is not None):
                         
                         best_track["unknown_hits"] = best_track.get("unknown_hits", 0) + 1
-                        if best_track["unknown_hits"] >= getattr(recognition_config, 'AUTO_REGISTER_REQUIRED_HITS', 3):
+                        if best_track["unknown_hits"] >= req_hits:
                             best_track["auto_registered"] = True
                             new_id = self.generate_person_id(self.persons)
                             num = new_id.replace("P-", "")
@@ -931,6 +938,7 @@ class RecognitionService:
                 similarity = result["score"]
                 candidate_name = result.get("candidate_name")
                 candidate_hits = result.get("candidate_hits", 0)
+                unknown_hits = result.get("unknown_hits", 0)
                 
                 if person_id != "Unknown":
                     color = (0, 255, 0)
@@ -942,6 +950,10 @@ class RecognitionService:
                     if scores:
                         avg_score = sum(scores) / len(scores)
                     label = f"Candidate: {candidate_name} | Hits: {candidate_hits}/{recognition_config.WEAK_MATCH_REQUIRED_HITS} | Avg: {avg_score:.2f}"
+                elif unknown_hits > 0 and getattr(recognition_config, 'ENABLE_AUTO_REGISTER_UNKNOWN', True):
+                    color = (0, 200, 255)
+                    req_hits = getattr(recognition_config, 'AUTO_REGISTER_REQUIRED_HITS', 3)
+                    label = f"Registering Visitor... ({unknown_hits}/{req_hits})"
                 else:
                     color = (0, 0, 255)
                     label = "Unknown"
@@ -1129,6 +1141,9 @@ class RecognitionService:
             self.cap.release()
             self.cap = None
         self.camera_status = 'disconnected'
+        with self.lock:
+            self.tracks = []
+        self.fps = 0.0
         print("Recognition service stopped.")
     
     def is_running(self):
@@ -1144,18 +1159,26 @@ class RecognitionService:
     
     def get_fps(self):
         """Get current FPS"""
+        if not self.running:
+            return 0.0
         return self.fps
     
     def get_faces_detected(self):
         """Get number of faces detected"""
+        if not self.running:
+            return 0
         return len(self.tracks)
     
     def get_active_tracks(self):
         """Get number of active tracks"""
+        if not self.running:
+            return 0
         return len(self.tracks)
     
     def get_tracks(self):
         """Get current tracks"""
+        if not self.running:
+            return []
         with self.lock:
             return self.tracks.copy()
     
@@ -1209,6 +1232,8 @@ class RecognitionService:
         self.registration_mode = False
         self.registration_embeddings = []
         self.registration_message = "Registration cancelled"
+        with self.lock:
+            self.tracks = []
         return {"success": True, "message": "Registration cancelled"}
     
     def finish_registration(self):
@@ -1217,6 +1242,8 @@ class RecognitionService:
             self.registration_message = "Registration failed - not enough samples"
             self.registration_mode = False
             self.registration_embeddings = []
+            with self.lock:
+                self.tracks = []
             return
         
         # Average embeddings
@@ -1228,6 +1255,8 @@ class RecognitionService:
             self.registration_message = "Invalid embedding"
             self.registration_mode = False
             self.registration_embeddings = []
+            with self.lock:
+                self.tracks = []
             return
         
         # Check for existing person
@@ -1239,15 +1268,17 @@ class RecognitionService:
             self.registration_message = f"Already registered: {existing_person['id']}"
             self.registration_mode = False
             self.registration_embeddings = []
+            with self.lock:
+                self.tracks = []
             return
         
         # Create new person
         person_id = self.generate_person_id(self.persons)
         new_person = {
-    "id": person_id,
-    "name": self.registration_name,
-    "embeddings": [e.tolist() for e in self.registration_embeddings]
-}
+            "id": person_id,
+            "name": self.registration_name,
+            "embeddings": [e.tolist() for e in self.registration_embeddings]
+        }
         
         self.persons.append(new_person)
         self.save_database(self.persons)
@@ -1255,6 +1286,8 @@ class RecognitionService:
         self.registration_message = f"Registered: {person_id} | {self.registration_name}"
         self.registration_mode = False
         self.registration_embeddings = []
+        with self.lock:
+            self.tracks = []
     
     def get_settings(self):
         """Get current settings"""
@@ -1279,6 +1312,10 @@ class RecognitionService:
                         recognition_config.TRACK_REFRESH_FRAMES = value
                     elif key == "track_max_missed_frames":
                         recognition_config.TRACK_MAX_MISSED_FRAMES = value
+                    elif key == "enable_auto_register_unknown":
+                        recognition_config.ENABLE_AUTO_REGISTER_UNKNOWN = bool(value)
+                    elif key == "auto_register_required_hits":
+                        recognition_config.AUTO_REGISTER_REQUIRED_HITS = int(value)
             return {"success": True, "message": "Settings updated"}
         except Exception as e:
             return {"success": False, "message": str(e)}

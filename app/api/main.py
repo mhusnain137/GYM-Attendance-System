@@ -103,31 +103,112 @@ async def get_status():
 
 @app.get("/api/state")
 async def get_state():
-    """Get current recognition state"""
+    """Get current recognition state with enriched membership alerts"""
     global recognition_service
-    if recognition_service:
+    if recognition_service and recognition_service.is_running():
         tracks = recognition_service.get_tracks()
         people = []
+        active_alerts = []
+        
+        memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+        memberships = load_json_file(memberships_file)
+        memberships_by_pid = {}
+        for m in memberships:
+            pid = m.get("person_id")
+            if pid:
+                memberships_by_pid[pid.lower()] = m
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
         
         for i, track in enumerate(tracks):
+            pid = track.get("id", "Unknown")
+            pname = track.get("name", "Unknown")
+            is_confirmed = track.get("confirmed", False)
+            
             person_data = {
                 "track_id": i,
-                "person_id": track.get("id", "Unknown"),
-                "name": track.get("name", "Unknown"),
+                "person_id": pid,
+                "name": pname,
                 "similarity": track.get("score", 0.0),
                 "face_confidence": track.get("confidence", 0.0),
                 "bbox": track.get("bbox"),
-                "confirmed": track.get("confirmed", False),
+                "confirmed": is_confirmed,
                 "candidate_name": track.get("candidate_name"),
                 "candidate_hits": track.get("candidate_hits", 0),
                 "candidate_scores": track.get("candidate_scores", []),
                 "last_seen_frame": track.get("last_seen_frame"),
-                "last_embed_frame": track.get("last_embed_frame")
+                "last_embed_frame": track.get("last_embed_frame"),
+                "membership_status": "NONE",
+                "days_left": None,
+                "expiry_date": None,
+                "plan_name": None,
+                "phone": "",
+                "is_alert": False,
+                "alert_type": None,
+                "alert_message": None
             }
             
+            # Enrich with membership details
+            if pid and pid != "Unknown" and pid.lower() in memberships_by_pid:
+                m = memberships_by_pid[pid.lower()]
+                exp_date = m.get("expiry_date", "")
+                m_status = m.get("status", "ACTIVE")
+                plan_name = m.get("plan_name", "Standard Pass")
+                phone = m.get("phone", "")
+                
+                person_data["expiry_date"] = exp_date
+                person_data["plan_name"] = plan_name
+                person_data["phone"] = phone
+                
+                days_left = 0
+                if exp_date:
+                    try:
+                        exp_dt = datetime.strptime(exp_date, "%Y-%m-%d").date()
+                        today_dt = datetime.strptime(today_str, "%Y-%m-%d").date()
+                        days_left = (exp_dt - today_dt).days
+                    except Exception:
+                        days_left = 0
+                person_data["days_left"] = days_left
+                
+                if m_status == "FROZEN":
+                    person_data["membership_status"] = "FROZEN"
+                    person_data["is_alert"] = True
+                    person_data["alert_type"] = "FROZEN"
+                    person_data["alert_message"] = f"Membership is currently FROZEN"
+                elif days_left < 0 or m_status == "EXPIRED":
+                    person_data["membership_status"] = "EXPIRED"
+                    person_data["is_alert"] = True
+                    person_data["alert_type"] = "EXPIRED"
+                    person_data["alert_message"] = f"Pass EXPIRED on {exp_date} ({abs(days_left)}d ago)"
+                elif days_left <= 3:
+                    person_data["membership_status"] = "EXPIRING_SOON"
+                    person_data["is_alert"] = True
+                    person_data["alert_type"] = "EXPIRING_SOON"
+                    person_data["alert_message"] = f"Pass expiring in {days_left} day{'s' if days_left != 1 else ''}"
+                else:
+                    person_data["membership_status"] = "ACTIVE"
+            elif pid and pid != "Unknown" and not pid.startswith("VISITOR"):
+                person_data["membership_status"] = "NO_PASS"
+                person_data["is_alert"] = True
+                person_data["alert_type"] = "NO_PASS"
+                person_data["alert_message"] = "No active membership pass found"
+
             # Determine status
             if person_data["confirmed"]:
                 person_data["status"] = "CONFIRMED"
+                if person_data["is_alert"]:
+                    active_alerts.append({
+                        "person_id": pid,
+                        "name": pname,
+                        "membership_status": person_data["membership_status"],
+                        "alert_type": person_data["alert_type"],
+                        "alert_message": person_data["alert_message"],
+                        "expiry_date": person_data["expiry_date"],
+                        "days_left": person_data["days_left"],
+                        "phone": person_data["phone"],
+                        "plan_name": person_data["plan_name"],
+                        "timestamp": datetime.now().strftime("%I:%M:%S %p")
+                    })
             elif person_data["candidate_name"]:
                 person_data["status"] = "VERIFYING"
             else:
@@ -136,12 +217,13 @@ async def get_state():
             people.append(person_data)
         
         return {
-            "camera": recognition_service.is_running(),
+            "camera": True,
             "fps": recognition_service.get_fps(),
             "faces_detected": len(tracks),
             "active_tracks": len(tracks),
             "registered_people": recognition_service.get_registered_count(),
-            "people": people
+            "people": people,
+            "active_alerts": active_alerts
         }
     
     return {
@@ -149,8 +231,9 @@ async def get_state():
         "fps": 0,
         "faces_detected": 0,
         "active_tracks": 0,
-        "registered_people": 0,
-        "people": []
+        "registered_people": recognition_service.get_registered_count() if recognition_service else 0,
+        "people": [],
+        "active_alerts": []
     }
 
 @app.get("/api/people")
@@ -203,8 +286,9 @@ async def update_person_name(person_id: str, data: dict):
     global recognition_service
     if recognition_service:
         new_name = data.get("name", "").strip()
-        if not new_name:
-            return {"success": False, "message": "Name cannot be empty"}
+        new_phone = data.get("phone", "").strip() if "phone" in data else None
+        if not new_name and new_phone is None:
+            return {"success": False, "message": "Name or phone cannot be empty"}
         
         persons = recognition_service.load_database()
         updated = False
@@ -212,7 +296,10 @@ async def update_person_name(person_id: str, data: dict):
         for p in persons:
             if p.get("id") == person_id:
                 old_name = p.get("name", "")
-                p["name"] = new_name
+                if new_name:
+                    p["name"] = new_name
+                if new_phone is not None:
+                    p["phone"] = new_phone
                 updated = True
                 break
         
@@ -221,17 +308,18 @@ async def update_person_name(person_id: str, data: dict):
             recognition_service.persons = persons
             
             # Update attendance records
-            attendance = recognition_service.load_attendance()
-            att_changed = False
-            for a in attendance:
-                if a.get("person_id") == person_id:
-                    a["name"] = new_name
-                    att_changed = True
-            if att_changed:
-                recognition_service.save_attendance(attendance)
+            if new_name:
+                attendance = recognition_service.load_attendance()
+                att_changed = False
+                for a in attendance:
+                    if a.get("person_id") == person_id:
+                        a["name"] = new_name
+                        att_changed = True
+                if att_changed:
+                    recognition_service.save_attendance(attendance)
 
             # Update visits records
-            if hasattr(recognition_service, 'load_visits'):
+            if new_name and hasattr(recognition_service, 'load_visits'):
                 visits = recognition_service.load_visits()
                 vis_changed = False
                 for v in visits:
@@ -255,9 +343,12 @@ async def update_person_name(person_id: str, data: dict):
                             m_pid = (m.get("person_id") or "").lower()
                             
                             # Match by name or ID
-                            if new_name.lower() == m_name or person_id.lower() == m_pid or m_name in new_name.lower():
-                                m["person_id"] = person_id
-                                m["person_name"] = new_name
+                            if (new_name and (new_name.lower() == m_name or m_name in new_name.lower())) or person_id.lower() == m_pid:
+                                if new_name:
+                                    m["person_id"] = person_id
+                                    m["person_name"] = new_name
+                                if new_phone:
+                                    m["phone"] = new_phone
                                 m_changed = True
                                 
                                 # If frozen due to unregistration, unfreeze and extend expiry date!
@@ -285,8 +376,8 @@ async def update_person_name(person_id: str, data: dict):
                 except Exception as e:
                     print("Error auto-unfreezing membership:", e)
             
-            add_event("MEMBERSHIP", f"Linked & Continued membership for {new_name} ({person_id})")
-            return {"success": True, "message": f"Updated name to {new_name} & continued membership"}
+            add_event("MEMBERSHIP", f"Updated profile for {new_name or person_id} ({person_id})")
+            return {"success": True, "message": f"Updated profile for {new_name or person_id}"}
         return {"success": False, "message": "Person ID not found"}
     return {"success": False, "message": "Recognition service not available"}
 
@@ -569,11 +660,42 @@ def save_json_file(filepath, data):
         print(f"Error saving {filepath}: {e}")
         return False
 
+DEFAULT_MEMBERSHIP_PLANS = [
+    {"plan_id": "daily", "name": "Daily Pass", "duration": 1, "duration_unit": "day", "price": 300.0, "description": "1 Day Pass"},
+    {"plan_id": "weekly", "name": "Weekly Pass", "duration": 7, "duration_unit": "day", "price": 1500.0, "description": "7 Days Pass"},
+    {"plan_id": "monthly", "name": "Monthly Standard", "duration": 1, "duration_unit": "month", "price": 5000.0, "description": "30-Day Pass"},
+    {"plan_id": "3months", "name": "3 Months (Quarterly)", "duration": 3, "duration_unit": "month", "price": 13500.0, "description": "Quarterly Pass"},
+    {"plan_id": "6months", "name": "6 Months (Half-Yearly)", "duration": 6, "duration_unit": "month", "price": 25000.0, "description": "Half-Year Pass"},
+    {"plan_id": "yearly", "name": "1 Year VIP Annual", "duration": 1, "duration_unit": "year", "price": 45000.0, "description": "Annual VIP Pass"}
+]
+
 @app.get("/api/membership-plans")
 async def get_membership_plans():
     """Get all membership plans"""
     plans_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "membership_plans.json")
-    return load_json_file(plans_file)
+    plans = load_json_file(plans_file)
+    if not plans:
+        plans = DEFAULT_MEMBERSHIP_PLANS
+        save_json_file(plans_file, plans)
+    return plans
+
+@app.post("/api/memberships/{membership_id}/reminder-sent")
+async def record_reminder_sent(membership_id: str):
+    """Record that a WhatsApp reminder was sent to member"""
+    memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+    memberships = load_json_file(memberships_file)
+    
+    for m in memberships:
+        if m.get("membership_id") == membership_id:
+            from datetime import datetime
+            now_iso = datetime.now().isoformat()
+            m["reminder_count"] = m.get("reminder_count", 0) + 1
+            m["last_reminder_sent"] = now_iso
+            save_json_file(memberships_file, memberships)
+            add_event("MEMBERSHIP", f"Recorded WhatsApp reminder for {m.get('person_name', membership_id)}")
+            return {"status": "success", "message": "Reminder recorded", "data": m}
+            
+    return {"status": "error", "message": "Membership not found"}
 
 @app.get("/api/memberships")
 async def get_memberships():
@@ -583,11 +705,14 @@ async def get_memberships():
     
     people = recognition_service.get_registered_people() if recognition_service else []
     people_map = {p.get("id"): p.get("name") for p in people}
+    people_phone_map = {p.get("id"): p.get("phone", "") for p in people}
     
     for m in memberships:
         pid = m.get("person_id")
         if pid in people_map:
             m["person_name"] = people_map[pid]
+        if not m.get("phone") and pid in people_phone_map and people_phone_map[pid]:
+            m["phone"] = people_phone_map[pid]
             
     return memberships
 
@@ -695,6 +820,7 @@ async def create_membership(data: dict):
         "status": "ACTIVE",
         "payment_status": data.get("payment_status", "PAID"),
         "amount": amount,
+        "phone": data.get("phone", "").strip(),
         "notes": data.get("notes", ""),
         "created_at": now_iso,
         "updated_at": now_iso
@@ -892,6 +1018,260 @@ async def get_membership_history(membership_id: str):
     
     history = [p for p in payments if p.get("membership_id") == membership_id]
     return history
+
+@app.get("/api/analytics/dashboard")
+async def get_dashboard_analytics():
+    """Get monthly revenue trends, hourly rush distributions, and key KPIs"""
+    payments_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "payments.json")
+    memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+    attendance_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "attendance.json")
+    visits_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "visits.json")
+    
+    payments = load_json_file(payments_file)
+    memberships = load_json_file(memberships_file)
+    attendance = load_json_file(attendance_file)
+    visits = load_json_file(visits_file)
+    
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    month_keys = []
+    month_data = {}
+    
+    for i in range(5, -1, -1):
+        y = now.year
+        m = now.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        key = f"{y:04d}-{m:02d}"
+        label = datetime(y, m, 1).strftime("%b %Y")
+        month_keys.append(key)
+        month_data[key] = {
+            "month": key,
+            "label": label,
+            "revenue": 0.0,
+            "transactions": 0,
+            "renewals": 0,
+            "new_passes": 0
+        }
+        
+    for p in payments:
+        p_date = p.get("payment_date") or (p.get("created_at") or "")[:10]
+        if p_date and len(p_date) >= 7:
+            m_key = p_date[:7]
+            if m_key in month_data:
+                amt = float(p.get("amount", 0))
+                month_data[m_key]["revenue"] += amt
+                month_data[m_key]["transactions"] += 1
+                if "Renew" in p.get("notes", "") or "RENEW" in p.get("reference_id", ""):
+                    month_data[m_key]["renewals"] += 1
+                else:
+                    month_data[m_key]["new_passes"] += 1
+
+    if sum(m_item["revenue"] for m_item in month_data.values()) == 0:
+        for m in memberships:
+            m_date = (m.get("start_date") or (m.get("created_at") or "")[:10])
+            if m_date and len(m_date) >= 7:
+                m_key = m_date[:7]
+                if m_key in month_data:
+                    month_data[m_key]["revenue"] += float(m.get("amount", 0))
+                    month_data[m_key]["transactions"] += 1
+                    month_data[m_key]["new_passes"] += 1
+
+    monthly_revenue = [month_data[k] for k in month_keys]
+    
+    # Hourly Rush Distribution (06:00 to 22:00)
+    hourly_counts = {h: 0 for h in range(6, 23)}
+    
+    for a in attendance:
+        t_str = a.get("first_detected", "")
+        if t_str and ":" in t_str:
+            try:
+                hour = int(t_str.split(":")[0])
+                if 6 <= hour <= 22:
+                    hourly_counts[hour] += 1
+            except Exception:
+                pass
+                
+    for v in visits:
+        t_str = v.get("first_detected", "")
+        if t_str and ":" in t_str:
+            try:
+                hour = int(t_str.split(":")[0])
+                if 6 <= hour <= 22:
+                    hourly_counts[hour] += 1
+            except Exception:
+                pass
+
+    max_rush_hour = max(hourly_counts, key=hourly_counts.get) if any(hourly_counts.values()) else 18
+    max_count = hourly_counts.get(max_rush_hour, 0)
+    
+    hourly_rush = []
+    for h in range(6, 23):
+        cnt = hourly_counts[h]
+        if cnt >= max_count * 0.75 and cnt > 0:
+            intensity = "peak"
+        elif cnt >= max_count * 0.4 and cnt > 0:
+            intensity = "moderate"
+        elif cnt > 0:
+            intensity = "light"
+        else:
+            intensity = "quiet"
+            
+        period = "AM" if h < 12 else "PM"
+        display_h = h if h <= 12 else h - 12
+        if display_h == 0:
+            display_h = 12
+        label = f"{display_h:02d}:00 {period}"
+        
+        hourly_rush.append({
+            "hour": h,
+            "label": label,
+            "count": cnt,
+            "intensity": intensity
+        })
+
+    curr_month_key = now.strftime("%Y-%m")
+    prev_month = (now.replace(day=1) - timedelta(days=1))
+    prev_month_key = prev_month.strftime("%Y-%m")
+    
+    this_month_rev = month_data.get(curr_month_key, {}).get("revenue", 0.0)
+    prev_month_rev = month_data.get(prev_month_key, {}).get("revenue", 0.0)
+    
+    growth_pct = 0
+    if prev_month_rev > 0:
+        growth_pct = round(((this_month_rev - prev_month_rev) / prev_month_rev) * 100, 1)
+        
+    active_members_count = sum(1 for m in memberships if m.get("status") == "ACTIVE")
+    
+    today_str = now.strftime("%Y-%m-%d")
+    today_attendance = sum(1 for a in attendance if a.get("date") == today_str)
+    
+    peak_start = max_rush_hour
+    peak_end = min(22, max_rush_hour + 2)
+    peak_rush_label = f"{peak_start if peak_start <= 12 else peak_start-12}:00 {'AM' if peak_start < 12 else 'PM'} - {peak_end if peak_end <= 12 else peak_end-12}:00 {'AM' if peak_end < 12 else 'PM'}"
+
+    return {
+        "monthly_revenue": monthly_revenue,
+        "hourly_rush": hourly_rush,
+        "kpis": {
+            "this_month_revenue": this_month_rev,
+            "prev_month_revenue": prev_month_rev,
+            "growth_percentage": growth_pct,
+            "active_members": active_members_count,
+            "today_attendance": today_attendance,
+            "busiest_hour": f"{max_rush_hour if max_rush_hour <= 12 else max_rush_hour-12}:00 {'AM' if max_rush_hour < 12 else 'PM'}",
+            "peak_rush_window": peak_rush_label,
+            "total_lifetime_revenue": sum(float(p.get("amount", 0)) for p in payments) or sum(float(m.get("amount", 0)) for m in memberships)
+        }
+    }
+
+@app.get("/api/people/{person_id}/profile")
+async def get_member_profile(person_id: str):
+    """Get complete detailed profile, attendance heatmap, streaks, and payment history"""
+    global recognition_service
+    people = recognition_service.get_registered_people() if recognition_service else []
+    person = next((p for p in people if p.get("id") == person_id or p.get("person_id") == person_id), None)
+    
+    if not person:
+        db_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
+        all_persons = load_json_file(db_file)
+        person = next((p for p in all_persons if p.get("id") == person_id or p.get("person_id") == person_id), None)
+        
+    if not person:
+        return {"status": "error", "message": "Person not found"}
+
+    memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+    payments_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "payments.json")
+    attendance_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "attendance.json")
+    
+    memberships = load_json_file(memberships_file)
+    payments = load_json_file(payments_file)
+    attendance = load_json_file(attendance_file)
+    
+    user_memberships = [m for m in memberships if (m.get("person_id") or "").lower() == person_id.lower()]
+    active_membership = next((m for m in user_memberships if m.get("status") in ["ACTIVE", "FROZEN"]), None)
+    if not active_membership and user_memberships:
+        active_membership = user_memberships[0]
+        
+    user_att = [a for a in attendance if (a.get("person_id") or "").lower() == person_id.lower()]
+    user_att.sort(key=lambda x: (x.get("date", ""), x.get("first_detected", "")), reverse=True)
+    
+    att_calendar = {}
+    for a in user_att:
+        d = a.get("date")
+        if d:
+            att_calendar[d] = {
+                "attended": True,
+                "first_detected": a.get("first_detected", ""),
+                "camera_name": a.get("camera_name", "Gate CCTV")
+            }
+            
+    dates_attended = sorted(list(set(att_calendar.keys())), reverse=True)
+    from datetime import datetime, timedelta
+    today = datetime.now().date()
+    
+    current_streak = 0
+    best_streak = 0
+    
+    if dates_attended:
+        try:
+            latest_date = datetime.strptime(dates_attended[0], "%Y-%m-%d").date()
+            if (today - latest_date).days <= 1:
+                streak_d = latest_date
+                while streak_d.strftime("%Y-%m-%d") in att_calendar:
+                    current_streak += 1
+                    streak_d -= timedelta(days=1)
+        except Exception:
+            pass
+                
+    if dates_attended:
+        try:
+            temp_streak = 1
+            sorted_asc = sorted([datetime.strptime(d, "%Y-%m-%d").date() for d in dates_attended])
+            best_streak = 1
+            for i in range(1, len(sorted_asc)):
+                if sorted_asc[i] == sorted_asc[i-1] + timedelta(days=1):
+                    temp_streak += 1
+                    best_streak = max(best_streak, temp_streak)
+                elif sorted_asc[i] > sorted_asc[i-1] + timedelta(days=1):
+                    temp_streak = 1
+        except Exception:
+            best_streak = len(dates_attended)
+
+    curr_month_str = today.strftime("%Y-%m")
+    visits_this_month = sum(1 for d in dates_attended if d.startswith(curr_month_str))
+    
+    user_mem_ids = [m.get("membership_id") for m in user_memberships]
+    user_payments = [p for p in payments if p.get("membership_id") in user_mem_ids]
+    
+    total_paid = sum(float(p.get("amount", 0)) for p in user_payments)
+    if total_paid == 0 and active_membership:
+        total_paid = float(active_membership.get("amount", 0))
+
+    return {
+        "status": "success",
+        "person": {
+            "person_id": person_id,
+            "name": person.get("name", "Unknown"),
+            "phone": person.get("phone", "") or (active_membership.get("phone") if active_membership else ""),
+            "created_at": person.get("created_at", ""),
+            "is_registered": True
+        },
+        "membership": active_membership,
+        "all_memberships": user_memberships,
+        "metrics": {
+            "current_streak": current_streak,
+            "best_streak": best_streak,
+            "visits_this_month": visits_this_month,
+            "total_lifetime_visits": len(dates_attended),
+            "total_paid_pkr": total_paid,
+            "last_visit_date": dates_attended[0] if dates_attended else None
+        },
+        "attendance_calendar": att_calendar,
+        "recent_attendance": user_att[:20],
+        "payments_history": user_payments
+    }
 
 if __name__ == "__main__":
     import uvicorn

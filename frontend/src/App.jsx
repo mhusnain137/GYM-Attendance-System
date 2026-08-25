@@ -100,27 +100,41 @@ function App() {
 
   return (
     <div className="app">
-      <nav className="sidebar">
-        <div className="sidebar-header">
-          <h1>PERSON IDENTITY SYSTEM</h1>
-          <div className={`status-indicator ${systemStatus.camera ? 'online' : 'offline'}`}>
-            {systemStatus.camera ? '● SYSTEM ONLINE' : '○ SYSTEM OFFLINE'}
+      {/* Top Header Bar */}
+      <header className="app-header-top">
+        <div className="brand-section">
+          <div className="brand-logo">🏋️</div>
+          <div className="brand-title-group">
+            <h1>GYM ATTENDANCE & BIOMETRICS</h1>
+            <p>AI Identity System • YuNet & SFace Engine</p>
           </div>
+        </div>
+
+        <div className="header-status-group">
+          <div className="status-pill-badge">
+            <span className={`status-dot ${systemStatus.camera ? 'active' : ''}`} />
+            <span>{systemStatus.camera ? 'CAMERA ONLINE' : 'CAMERA OFFLINE'}</span>
+          </div>
+
+          <div className="status-pill-badge" style={{ color: 'var(--color-primary)' }}>
+            <span>🧠 Registered: {systemStatus.registered_people || 0} Members</span>
+          </div>
+
           <div className="theme-selector">
             <button 
-              className="theme-button"
+              className="button button-secondary"
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
               onClick={() => setShowThemeDropdown(!showThemeDropdown)}
             >
-              <span className="theme-icon">🎨</span>
-              <span className="theme-label">Theme</span>
-              <span className="theme-arrow">▼</span>
+              🎨 Theme ▼
             </button>
             {showThemeDropdown && (
-              <div className="theme-dropdown">
+              <div className="theme-dropdown" style={{ position: 'absolute', right: 28, top: 60, background: 'var(--bg-dark-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 8, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {THEMES.map(theme => (
                   <button
                     key={theme.value}
-                    className={`theme-option ${currentTheme === theme.value ? 'active' : ''}`}
+                    className={`button button-secondary ${currentTheme === theme.value ? 'button-primary' : ''}`}
+                    style={{ padding: '6px 12px', justifyContent: 'flex-start', fontSize: '0.8rem' }}
                     onClick={() => handleThemeChange(theme.value)}
                   >
                     {theme.label}
@@ -130,42 +144,66 @@ function App() {
             )}
           </div>
         </div>
-        <ul className="sidebar-nav">
-          <li className={currentPage === 'dashboard' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('dashboard')}>
-              ▣ Dashboard
-            </button>
-          </li>
-          <li className={currentPage === 'people' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('people')}>
-              👥 People
-            </button>
-          </li>
-          <li className={currentPage === 'membership' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('membership')}>
-              💳 Membership
-            </button>
-          </li>
-          <li className={currentPage === 'attendance' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('attendance')}>
-              📅 Attendance
-            </button>
-          </li>
-          <li className={currentPage === 'activity' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('activity')}>
-              📋 Activity
-            </button>
-          </li>
-          <li className={currentPage === 'settings' ? 'active' : ''}>
-            <button onClick={() => setCurrentPage('settings')}>
-              ⚙ Settings
-            </button>
-          </li>
-        </ul>
-      </nav>
-      <main className="main-content">
-        {renderPage()}
-      </main>
+      </header>
+
+      {/* Main Body with Sidebar + Content */}
+      <div className="app-body">
+        <nav className="sidebar">
+          <div className="sidebar-nav">
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('dashboard')}
+            >
+              <span className="nav-item-icon">📺</span>
+              <span>Live Dashboard</span>
+            </div>
+
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'people' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('people')}
+            >
+              <span className="nav-item-icon">👥</span>
+              <span>People Directory</span>
+            </div>
+
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'membership' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('membership')}
+            >
+              <span className="nav-item-icon">💳</span>
+              <span>Gym Memberships</span>
+            </div>
+
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'attendance' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('attendance')}
+            >
+              <span className="nav-item-icon">📅</span>
+              <span>Attendance & Visits</span>
+            </div>
+
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'activity' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('activity')}
+            >
+              <span className="nav-item-icon">📋</span>
+              <span>Activity Audit Log</span>
+            </div>
+
+            <div 
+              className={`sidebar-nav-item ${currentPage === 'settings' ? 'active' : ''}`}
+              onClick={() => setCurrentPage('settings')}
+            >
+              <span className="nav-item-icon">⚙️</span>
+              <span>System Settings</span>
+            </div>
+          </div>
+        </nav>
+
+        <main className="main-content">
+          {renderPage()}
+        </main>
+      </div>
     </div>
   );
 }

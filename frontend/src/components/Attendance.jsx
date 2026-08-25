@@ -3,6 +3,31 @@ import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
 import './Attendance.css';
 
+// Dedicated avatar component that handles face crops with graceful fallback
+function PersonAvatar({ name, personId, size = 44, className = '' }) {
+  const [imgError, setImgError] = useState(false);
+  const initial = name && name.trim() ? name.trim().charAt(0).toUpperCase() : '?';
+  const cropUrl = `/api/face-crops/${personId}.jpg`;
+
+  return (
+    <div 
+      className={`member-avatar ${className}`}
+      style={{ width: size, height: size, minWidth: size, maxWidth: size }}
+    >
+      {!imgError ? (
+        <img 
+          src={cropUrl} 
+          alt="" 
+          className="member-crop-img" 
+          onError={() => setImgError(true)} 
+        />
+      ) : (
+        <span className="member-avatar-initial">{initial}</span>
+      )}
+    </div>
+  );
+}
+
 function Attendance() {
   const [attendance, setAttendance] = useState([]);
   const [visits, setVisits] = useState([]);
@@ -271,8 +296,8 @@ function Attendance() {
                   {groupedAttendance[date].map((record, index) => (
                     <div key={index} className="attendance-record-card">
                       <div className="record-header">
-                        <div className="record-title">
-                          <span className="record-icon">✓</span>
+                        <div className="record-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                          <PersonAvatar name={record.name} personId={record.person_id} size={40} />
                           <span className="record-name">{record.name}</span>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -333,7 +358,7 @@ function Attendance() {
                 <div key={groupIdx} className="card visit-person-card">
                   <div className="visit-card-header">
                     <div className="visit-person-info">
-                      <div className="visit-avatar">👤</div>
+                      <PersonAvatar name={group.name} personId={group.person_id} size={48} />
                       <div>
                         <h3 className="visit-person-name">{group.name}</h3>
                         <span className="visit-person-id">ID: {group.person_id}</span>

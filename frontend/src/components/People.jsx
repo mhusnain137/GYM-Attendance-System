@@ -1,12 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
+import MemberProfileModal from './MemberProfileModal';
 import './People.css';
+
+// Dedicated avatar component that handles face crops with graceful fallback
+function PersonAvatar({ name, personId, size = 54, className = '' }) {
+  const [imgError, setImgError] = useState(false);
+  const initial = name && name.trim() ? name.trim().charAt(0).toUpperCase() : '?';
+  const cropUrl = `/api/face-crops/${personId}.jpg`;
+
+  return (
+    <div 
+      className={`person-avatar-circle ${className}`}
+      style={{ width: size, height: size, minWidth: size, maxWidth: size }}
+    >
+      {!imgError ? (
+        <img 
+          src={cropUrl} 
+          alt="" 
+          className="person-crop-img" 
+          onError={() => setImgError(true)} 
+        />
+      ) : (
+        <span className="person-avatar-initial">{initial}</span>
+      )}
+    </div>
+  );
+}
 
 function People() {
   const [people, setPeople] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedProfilePerson, setSelectedProfilePerson] = useState(null); // { id, name }
 
   // Search & Filter state
   const [searchTerm, setSearchTerm] = useState('');
@@ -409,7 +436,7 @@ function People() {
       <div className="people-header">
         <div>
           <h1 className="people-title">👥 Registered Persons Directory</h1>
-          <p className="people-subtitle">Manage registered face embeddings, CCTV samples, and gym passes</p>
+          <p className="people-subtitle">Manage registered face embeddings, CCTV multi-angle samples, and gym passes</p>
         </div>
       </div>
 
@@ -424,7 +451,7 @@ function People() {
       <div className="people-kpi-grid">
         <div className="kpi-card">
           <div className="kpi-icon blue">👥</div>
-          <div>
+          <div className="kpi-info">
             <span className="kpi-label">Total Persons</span>
             <span className="kpi-value">{totalRegistered}</span>
           </div>
@@ -432,7 +459,7 @@ function People() {
 
         <div className="kpi-card">
           <div className="kpi-icon green">🟢</div>
-          <div>
+          <div className="kpi-info">
             <span className="kpi-label">Active Members</span>
             <span className="kpi-value">{totalActiveMembers}</span>
           </div>
@@ -440,7 +467,7 @@ function People() {
 
         <div className="kpi-card">
           <div className="kpi-icon purple">📹</div>
-          <div>
+          <div className="kpi-info">
             <span className="kpi-label">CCTV Multi-Angle</span>
             <span className="kpi-value">{totalMultiAngle}</span>
           </div>
@@ -448,7 +475,7 @@ function People() {
 
         <div className="kpi-card">
           <div className="kpi-icon yellow">⚠️</div>
-          <div>
+          <div className="kpi-info">
             <span className="kpi-label">Expiring Soon</span>
             <span className="kpi-value warning-text">{totalExpiringSoon}</span>
           </div>
@@ -457,52 +484,60 @@ function People() {
 
       {/* Controls Bar: Search, Filters, View Mode & Sort */}
       <div className="people-controls-bar">
-        <div className="search-box">
-          <span className="search-icon">🔍</span>
-          <input
-            type="text"
-            placeholder="Search by name or Person ID (e.g. Ahmad, P-000001)..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && <button className="clear-search" onClick={() => setSearchTerm('')}>✕</button>}
+        <div className="controls-top-row">
+          <div className="search-box">
+            <span className="search-icon">🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              placeholder="Search by name or Person ID (e.g. Ahmad, P-000001)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && <button className="clear-search" onClick={() => setSearchTerm('')}>✕</button>}
+          </div>
+
+          <div className="controls-right">
+            <div className="view-switcher">
+              <button className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`} title="Grid View" onClick={() => setViewMode('grid')}>
+                🪟 Grid
+              </button>
+              <button className={`view-btn ${viewMode === 'table' ? 'active' : ''}`} title="Table View" onClick={() => setViewMode('table')}>
+                📊 Table
+              </button>
+            </div>
+
+            <div className="sort-box">
+              <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                <option value="name">Name (A-Z)</option>
+                <option value="id">Person ID</option>
+                <option value="membership">Membership Status</option>
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="filter-tabs">
           <button className={`tab-btn ${filter === 'ALL' ? 'active' : ''}`} onClick={() => setFilter('ALL')}>
-            All ({enrichedPeople.length})
+            <span>All</span>
+            <span className="tab-count-badge">{enrichedPeople.length}</span>
           </button>
           <button className={`tab-btn ${filter === 'ACTIVE_MEMBER' ? 'active' : ''}`} onClick={() => setFilter('ACTIVE_MEMBER')}>
-            Active Members
+            <span>🟢 Active Members</span>
+            <span className="tab-count-badge">{totalActiveMembers}</span>
           </button>
           <button className={`tab-btn warning ${filter === 'EXPIRING_SOON' ? 'active' : ''}`} onClick={() => setFilter('EXPIRING_SOON')}>
-            ⚠️ Expiring Soon
+            <span>⚠️ Expiring Soon</span>
+            <span className="tab-count-badge">{totalExpiringSoon}</span>
           </button>
           <button className={`tab-btn ${filter === 'VISITORS' ? 'active' : ''}`} onClick={() => setFilter('VISITORS')}>
-            👤 Auto Visitors
+            <span>👤 Auto Visitors</span>
+            <span className="tab-count-badge">{enrichedPeople.filter(p => p.name?.toLowerCase().startsWith('visitor') || p.is_auto_registered).length}</span>
           </button>
           <button className={`tab-btn ${filter === 'NO_MEMBERSHIP' ? 'active' : ''}`} onClick={() => setFilter('NO_MEMBERSHIP')}>
-            ⚪ No Membership
+            <span>⚪ No Membership</span>
+            <span className="tab-count-badge">{enrichedPeople.filter(p => p.memInfo.status === 'NO_MEMBERSHIP').length}</span>
           </button>
-        </div>
-
-        <div className="controls-right">
-          <div className="view-switcher">
-            <button className={`view-btn ${viewMode === 'grid' ? 'active' : ''}`} title="Grid View" onClick={() => setViewMode('grid')}>
-              🪟 Grid
-            </button>
-            <button className={`view-btn ${viewMode === 'table' ? 'active' : ''}`} title="Table View" onClick={() => setViewMode('table')}>
-              📊 Table
-            </button>
-          </div>
-
-          <div className="sort-box">
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="name">Name (A-Z)</option>
-              <option value="id">Person ID</option>
-              <option value="membership">Membership Status</option>
-            </select>
-          </div>
         </div>
       </div>
 
@@ -525,23 +560,31 @@ function People() {
         /* ================= CARDS GRID VIEW ================= */
         <div className="people-cards-grid">
           {filteredPeople.map((person) => {
-            const initial = person.name ? person.name.charAt(0).toUpperCase() : '?';
-            const cropUrl = `/api/face-crops/${person.person_id}.jpg`;
             return (
               <div key={person.person_id} className="person-card">
+                {/* Top-Right Quick Delete Icon Button */}
+                <button
+                  className="btn-card-top-delete"
+                  title="Remove Person from Database"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleUnregisterClick(person);
+                  }}
+                  disabled={isDeleting}
+                >
+                  🗑️
+                </button>
+
                 {/* Header Avatar & Basic Info */}
-                <div className="card-header">
-                  <div className="person-avatar-circle">
-                    <img 
-                      src={cropUrl} 
-                      alt={person.name} 
-                      className="person-crop-img" 
-                      onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} 
-                    />
-                    <span style={{ display: 'none' }}>{initial}</span>
-                  </div>
+                <div 
+                  className="card-header"
+                  style={{ cursor: 'pointer' }}
+                  onClick={() => setSelectedProfilePerson({ id: person.person_id, name: person.name })}
+                  title="Click to view Workout Calendar Heatmap & Full Profile"
+                >
+                  <PersonAvatar name={person.name} personId={person.person_id} size={54} />
                   <div className="person-main-info">
-                    <h3 className="person-name">{person.name}</h3>
+                    <h3 className="person-name" title={person.name}>{person.name}</h3>
                     <span className="person-id-badge">{person.person_id}</span>
                   </div>
                 </div>
@@ -560,13 +603,13 @@ function People() {
                 </div>
 
                 {/* Person Meta Details */}
-                <div className="person-details-grid">
-                  <div className="detail-item">
+                <div className="person-details-box">
+                  <div className="detail-row">
                     <span className="detail-label">Database Status</span>
                     <span className="detail-value status-online">● Registered</span>
                   </div>
 
-                  <div className="detail-item">
+                  <div className="detail-row">
                     <span className="detail-label">Gym Pass</span>
                     <span className="detail-value">{person.memInfo.label}</span>
                   </div>
@@ -575,39 +618,30 @@ function People() {
                 {/* Stored Photos Count Badge & Manage Link - Render ONLY if person has > 1 face photos */}
                 {person.sampleCount > 1 && (
                   <div className="card-samples-strip">
-                    <div className="mini-thumbs-header" style={{ marginBottom: 0 }}>
-                      <span className="strip-label">🖼️ <strong>{person.sampleCount}</strong> Stored Face Photos</span>
-                      <button className="btn-manage-photos-link" onClick={() => handleOpenGalleryModal(person)}>
-                        Manage All ➔
-                      </button>
-                    </div>
+                    <span className="strip-label">🖼️ <strong>{person.sampleCount}</strong> Stored Face Photos</span>
+                    <button className="btn-manage-photos-link" onClick={() => handleOpenGalleryModal(person)}>
+                      Manage All ➔
+                    </button>
                   </div>
                 )}
 
-                {/* Actions Toolbar */}
+                {/* Actions Toolbar: 2 Clean Balanced Buttons */}
                 <div className="card-actions-row">
                   <button
-                    className="btn-add-photo"
+                    className="btn-card-action btn-add-photo"
                     title="Add Extra Face Photo Sample"
                     onClick={() => handleAddPhotoClick(person)}
                   >
-                    📸 Add Photo
+                    <span>📸</span>
+                    <span>Add Photo</span>
                   </button>
                   <button
-                    className="btn-rename"
+                    className="btn-card-action btn-rename"
                     title="Rename Person Name"
                     onClick={() => handleRenameClick(person)}
                   >
-                    ✏️ Rename
-                  </button>
-                  <button
-                    className="btn-unregister"
-                    title="Remove Person from Database"
-                    onClick={() => handleUnregisterClick(person)}
-                    disabled={isDeleting}
-                  >
-                    <span className="btn-icon">🗑️</span>
-                    <span>Remove</span>
+                    <span>✏️</span>
+                    <span>Rename</span>
                   </button>
                 </div>
               </div>
@@ -631,20 +665,10 @@ function People() {
             </thead>
             <tbody>
               {filteredPeople.map((person) => {
-                const initial = person.name ? person.name.charAt(0).toUpperCase() : '?';
-                const cropUrl = `/api/face-crops/${person.person_id}.jpg`;
                 return (
                   <tr key={person.person_id}>
                     <td>
-                      <div className="table-avatar-box">
-                        <img 
-                          src={cropUrl} 
-                          alt={person.name} 
-                          className="table-crop-img" 
-                          onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} 
-                        />
-                        <span className="table-avatar" style={{ display: 'none' }}>{initial}</span>
-                      </div>
+                      <PersonAvatar name={person.name} personId={person.person_id} size={42} />
                     </td>
                     <td>
                       <span className="table-member-name">{person.name}</span>
@@ -654,7 +678,7 @@ function People() {
                     </td>
                     <td>
                       <span className="embedding-tag">
-                        {person.sampleCount > 1 ? `📹 ${person.sampleCount} CCTV Multi-Angles` : `📷 1 Camera Sample`}
+                        {person.sampleCount > 1 ? `📹 ${person.sampleCount} CCTV Angles` : `📷 1 Sample`}
                       </span>
                     </td>
                     <td>
@@ -663,32 +687,31 @@ function People() {
                       </span>
                     </td>
                     <td>
-                      <span className="status-online">● REGISTERED</span>
+                      <span className="detail-value status-online">● REGISTERED</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
+                      <div className="table-actions-cell">
                         <button
-                          className="btn-add-photo table-btn"
+                          className="btn-card-action btn-add-photo table-btn"
                           title="Add Face Photo Sample"
                           onClick={() => handleAddPhotoClick(person)}
                         >
                           📸 Photo
                         </button>
                         <button
-                          className="btn-rename table-btn"
+                          className="btn-card-action btn-rename table-btn"
                           title="Rename Person"
                           onClick={() => handleRenameClick(person)}
                         >
                           ✏️ Rename
                         </button>
                         <button
-                          className="btn-unregister table-btn"
+                          className="btn-card-action btn-unregister table-btn"
                           title="Remove Person from Database"
                           onClick={() => handleUnregisterClick(person)}
                           disabled={isDeleting}
                         >
-                          <span className="btn-icon">🗑️</span>
-                          <span>Remove</span>
+                          🗑️ Remove
                         </button>
                       </div>
                     </td>
@@ -703,54 +726,36 @@ function People() {
       {/* Rename Modal */}
       {showRenameModal && personToRename && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '440px' }}>
             <div className="modal-header">
-              <h2>✏️ Assign / Rename Person</h2>
+              <h2>✏️ Rename Person</h2>
               <button className="close-btn" onClick={() => setShowRenameModal(false)}>✕</button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px', padding: '20px' }}>
-              <div className="rename-face-preview">
-                <img 
-                  src={`/api/face-crops/${personToRename.person_id}.jpg`} 
-                  alt={personToRename.name} 
-                  className="rename-face-img"
-                  onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                />
-                <div className="rename-avatar-fallback" style={{ display: 'none' }}>
-                  {personToRename.name?.charAt(0).toUpperCase()}
-                </div>
-              </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+              <PersonAvatar name={personToRename.name} personId={personToRename.person_id} size={70} />
               <div style={{ textAlign: 'center' }}>
                 <span className="person-id-badge">{personToRename.person_id}</span>
-                <p style={{ margin: '6px 0 0 0', color: '#94a3b8', fontSize: '0.85rem' }}>
-                  Change name for this recognized person
+                <p style={{ margin: '6px 0 0 0', color: 'var(--c-slate-light)', fontSize: '0.86rem', fontWeight: 600 }}>
+                  Update name for this recognized member
                 </p>
               </div>
               <div style={{ width: '100%' }}>
-                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.85rem', color: '#cbd5e1', fontWeight: 600 }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--c-slate)', fontWeight: 700 }}>
                   Enter Full Name:
                 </label>
                 <input 
                   type="text" 
-                  className="rename-input"
-                  placeholder="e.g. Zeeshan Ahmad" 
+                  className="search-input"
+                  placeholder="e.g. Ahmad Saeed" 
                   value={newName} 
                   onChange={(e) => setNewName(e.target.value)}
                   autoFocus
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: 'rgba(15, 23, 42, 0.8)',
-                    color: '#f8fafc',
-                    fontSize: '1rem'
-                  }}
+                  style={{ width: '100%' }}
                 />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setShowRenameModal(false)} disabled={isRenaming}>
+              <button className="button button-secondary" onClick={() => setShowRenameModal(false)} disabled={isRenaming}>
                 Cancel
               </button>
               <button className="button button-primary" onClick={handleConfirmRename} disabled={isRenaming || !newName.trim()}>
@@ -764,34 +769,36 @@ function People() {
       {/* Confirmation Unregister Modal */}
       {showConfirmDialog && personToDelete && (
         <div className="modal-overlay">
-          <div className="modal-content">
+          <div className="modal-content" style={{ maxWidth: '460px' }}>
             <div className="modal-header">
               <h2>🗑️ Unregister Person</h2>
               <button className="close-btn" onClick={handleCancelUnregister}>✕</button>
             </div>
-            <div className="confirm-body">
-              <p>Are you sure you want to unregister this person?</p>
+            <div className="modal-body">
+              <p style={{ color: 'var(--c-slate)', fontSize: '0.95rem', marginBottom: '14px', fontWeight: 600 }}>
+                Are you sure you want to unregister this person from the system?
+              </p>
               <div className="confirm-person-box">
-                <div className="confirm-avatar">{personToDelete.name?.charAt(0).toUpperCase()}</div>
+                <PersonAvatar name={personToDelete.name} personId={personToDelete.id || personToDelete.person_id} size={48} />
                 <div>
-                  <h4>{personToDelete.name}</h4>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '1.05rem', fontWeight: 800, color: 'var(--c-slate)' }}>{personToDelete.name}</h4>
                   <span className="person-id-badge">{personToDelete.id || personToDelete.person_id}</span>
                 </div>
               </div>
-              <p className="warning-text">
-                ⚠️ Warning: This will permanently remove their stored face embedding from the recognition database.
+              <p className="warning-text" style={{ marginTop: '14px', color: 'var(--color-danger)', fontSize: '0.84rem', fontWeight: 600 }}>
+                ⚠️ Warning: This will permanently remove their stored face embeddings from the recognition database.
               </p>
             </div>
             <div className="modal-footer">
               <button
-                className="btn-secondary"
+                className="button button-secondary"
                 onClick={handleCancelUnregister}
                 disabled={isDeleting}
               >
                 Cancel
               </button>
               <button
-                className="btn-danger"
+                className="button button-danger"
                 onClick={handleConfirmUnregister}
                 disabled={isDeleting}
               >
@@ -812,10 +819,13 @@ function People() {
             </div>
             <div className="modal-body photo-modal-body">
               <div className="photo-person-info">
-                <span className="person-id-badge">{personForPhoto.person_id || personForPhoto.id}</span>
-                <h3>{personForPhoto.name}</h3>
+                <PersonAvatar name={personForPhoto.name} personId={personForPhoto.person_id || personForPhoto.id} size={40} />
+                <div>
+                  <span className="person-id-badge">{personForPhoto.person_id || personForPhoto.id}</span>
+                  <h3 style={{ display: 'inline-block', marginLeft: '8px' }}>{personForPhoto.name}</h3>
+                </div>
                 <span className="sample-count-info">
-                  Stored Embedding Samples: <strong>{hasMultiEmbeddings(personForPhoto)} / 5</strong>
+                  Stored Samples: <strong>{hasMultiEmbeddings(personForPhoto)} / 5</strong>
                 </span>
               </div>
 
@@ -922,7 +932,7 @@ function People() {
 
                   {filePreviews.length > 0 && (
                     <div className="photo-preview-container" style={{ marginTop: '12px' }}>
-                      <span className="captured-count-title">Captured Snapshots ({filePreviews.length}):</span>
+                      <span className="section-title">Captured Snapshots ({filePreviews.length}):</span>
                       <div className="multi-preview-grid">
                         {filePreviews.map((previewSrc, idx) => (
                           <div key={idx} className="preview-thumb-box">
@@ -952,7 +962,7 @@ function People() {
             </div>
             <div className="modal-footer">
               <button 
-                className="btn-secondary" 
+                className="button button-secondary" 
                 onClick={handleClosePhotoModal} 
                 disabled={isUploadingPhoto}
               >
@@ -980,10 +990,13 @@ function People() {
             </div>
             <div className="modal-body gallery-modal-body">
               <div className="photo-person-info">
-                <span className="person-id-badge">{personForGallery.person_id || personForGallery.id}</span>
-                <h3>{personForGallery.name}</h3>
+                <PersonAvatar name={personForGallery.name} personId={personForGallery.person_id || personForGallery.id} size={40} />
+                <div>
+                  <span className="person-id-badge">{personForGallery.person_id || personForGallery.id}</span>
+                  <h3 style={{ display: 'inline-block', marginLeft: '8px' }}>{personForGallery.name}</h3>
+                </div>
                 <span className="sample-count-info">
-                  Total Face Samples Stored: <strong>{existingSamples.length} / 5</strong>
+                  Total Samples: <strong>{existingSamples.length} / 5</strong>
                 </span>
               </div>
 
@@ -1046,12 +1059,21 @@ function People() {
               >
                 📸 Add New Face Photo
               </button>
-              <button className="btn-secondary" onClick={handleCloseGalleryModal}>
+              <button className="button button-secondary" onClick={handleCloseGalleryModal}>
                 Close
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Member Detailed Profile & Workout Calendar Heatmap Modal */}
+      {selectedProfilePerson && (
+        <MemberProfileModal
+          personId={selectedProfilePerson.id}
+          personName={selectedProfilePerson.name}
+          onClose={() => setSelectedProfilePerson(null)}
+        />
       )}
     </div>
   );

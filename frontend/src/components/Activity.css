@@ -1,20 +1,23 @@
+/* Activity Log Styling - Warm Luxury Earth Palette */
+
 .activity {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 8px;
 }
 
 .page-header h1 {
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--text-primary);
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: var(--c-slate);
+  letter-spacing: -0.02em;
 }
 
 .activity-log {
@@ -26,43 +29,48 @@
 .no-events {
   text-align: center;
   padding: 60px 20px;
-  color: var(--text-muted);
+  color: var(--c-slate-light);
 }
 
 .no-events-icon {
-  font-size: 64px;
-  margin-bottom: 15px;
+  font-size: 54px;
+  margin-bottom: 12px;
 }
 
 .events-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .event-item {
   display: flex;
-  gap: 15px;
-  padding: 15px;
-  background-color: var(--bg-tertiary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s;
+  gap: 16px;
+  padding: 18px;
+  background-color: #FFFFFF;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--c-sand);
+  transition: all 0.22s ease;
+  box-shadow: 0 2px 8px rgba(52, 64, 84, 0.03);
 }
 
 .event-item:hover {
-  border-color: var(--border-hover);
+  border-color: var(--c-mocha);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(52, 64, 84, 0.06);
 }
 
 .event-icon {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   flex-shrink: 0;
+  background: var(--c-sand-light);
+  border: 1.5px solid var(--c-sand);
 }
 
 .event-content {
@@ -79,25 +87,35 @@
 }
 
 .event-type {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: var(--c-mocha);
   text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .event-time {
-  font-size: 12px;
-  color: var(--text-muted);
+  font-size: 0.8rem;
+  color: var(--c-slate-light);
   font-family: monospace;
+  font-weight: 600;
 }
 
 .event-message {
-  font-size: 14px;
-  color: var(--text-secondary);
-  line-height: 1.4;
+  font-size: 0.92rem;
+  color: var(--c-slate);
+  font-weight: 600;
+  line-height: 1.5;
 }
 
 .event-data {
+  font-size: 0.82rem;
+  color: var(--c-slate-light);
+  font-family: monospace;
+  background: var(--c-sand-light);
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--c-sand);
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -106,8 +124,8 @@
 
 .data-item {
   font-size: 12px;
-  color: var(--text-tertiary);
-  background-color: var(--bg-secondary);
+  color: var(--c-slate);
+  background-color: #FFFFFF;
   padding: 4px 8px;
   border-radius: 4px;
 }

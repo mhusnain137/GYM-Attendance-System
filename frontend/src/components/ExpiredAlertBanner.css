@@ -1,0 +1,203 @@
+.expired-alert-banner {
+  width: 100%;
+  margin-bottom: 20px;
+  border-radius: var(--radius-lg);
+  padding: 14px 20px;
+  box-shadow: 0 8px 24px rgba(239, 68, 68, 0.25);
+  animation: bannerSlideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes bannerSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.expired-alert-banner.expired {
+  background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%);
+  border: 2px solid #EF4444;
+}
+
+.expired-alert-banner.frozen {
+  background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 100%);
+  border: 2px solid #0284C7;
+}
+
+.expired-alert-banner.expiring {
+  background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%);
+  border: 2px solid #F59E0B;
+}
+
+.expired-alert-banner.nopass {
+  background: linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);
+  border: 2px solid #64748B;
+}
+
+.banner-inner-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.banner-left-section {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.banner-pulse-icon {
+  font-size: 1.8rem;
+  animation: pulseAlarm 1.2s infinite;
+}
+
+@keyframes pulseAlarm {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.banner-avatar {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.banner-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.banner-avatar-initial {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: var(--c-mocha);
+}
+
+.banner-text-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.banner-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.banner-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 1px 7px;
+  border-radius: var(--radius-sm);
+}
+
+.expired .banner-badge { background: #EF4444; color: #FFFFFF; }
+.frozen .banner-badge { background: #0284C7; color: #FFFFFF; }
+.expiring .banner-badge { background: #F59E0B; color: #FFFFFF; }
+.nopass .banner-badge { background: #64748B; color: #FFFFFF; }
+
+.banner-time {
+  font-size: 0.72rem;
+  color: var(--c-slate-light);
+  font-weight: 600;
+}
+
+.banner-member-name {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--c-slate);
+}
+
+.banner-pid {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--c-slate-light);
+}
+
+.banner-sub-msg {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #B91C1C;
+  margin-top: 1px;
+}
+
+.frozen .banner-sub-msg { color: #0369A1; }
+.expiring .banner-sub-msg { color: #B45309; }
+.nopass .banner-sub-msg { color: #475569; }
+
+.banner-right-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-banner-action {
+  padding: 8px 14px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-banner-action.whatsapp {
+  background: #25D366;
+  border: 1px solid #25D366;
+  color: #FFFFFF;
+}
+
+.btn-banner-action.whatsapp:hover {
+  background: #1EBE5D;
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+}
+
+.btn-banner-action.renew {
+  background: var(--c-mocha);
+  border: 1px solid var(--c-mocha);
+  color: #FFFFFF;
+}
+
+.btn-banner-action.renew:hover {
+  background: var(--c-mocha-hover);
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 12px rgba(135, 95, 69, 0.35);
+}
+
+.btn-banner-dismiss {
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  color: var(--c-slate-light);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+.btn-banner-dismiss:hover {
+  color: var(--c-slate);
+  background: rgba(0, 0, 0, 0.08);
+}

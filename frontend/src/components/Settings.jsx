@@ -5,12 +5,14 @@ import './Settings.css';
 
 function Settings() {
   const [settings, setSettings] = useState({
-    recognition_threshold: 0.50,
-    weak_match_threshold: 0.43,
-    min_match_margin: 0.05,
-    weak_match_required_hits: 3,
+    recognition_threshold: 0.52,
+    weak_match_threshold: 0.46,
+    min_match_margin: 0.08,
+    weak_match_required_hits: 5,
     track_refresh_frames: 45,
-    track_max_missed_frames: 15
+    track_max_missed_frames: 15,
+    enable_auto_register_unknown: true,
+    auto_register_required_hits: 3
   });
   const [saved, setSaved] = useState(false);
 
@@ -45,12 +47,14 @@ function Settings() {
 
   const resetSettings = () => {
     setSettings({
-      recognition_threshold: 0.50,
-      weak_match_threshold: 0.43,
-      min_match_margin: 0.05,
-      weak_match_required_hits: 3,
+      recognition_threshold: 0.52,
+      weak_match_threshold: 0.46,
+      min_match_margin: 0.08,
+      weak_match_required_hits: 5,
       track_refresh_frames: 45,
-      track_max_missed_frames: 15
+      track_max_missed_frames: 15,
+      enable_auto_register_unknown: true,
+      auto_register_required_hits: 3
     });
     setSaved(false);
   };
@@ -191,6 +195,44 @@ function Settings() {
         </div>
 
         <div className="card settings-section">
+          <h2>VISITOR AUTO-REGISTRATION</h2>
+          <div className="setting-item">
+            <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+              <span>Auto-Register Unknown Faces</span>
+              <input
+                type="checkbox"
+                checked={!!settings.enable_auto_register_unknown}
+                onChange={(e) => handleChange('enable_auto_register_unknown', e.target.checked)}
+                style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#10B981' }}
+              />
+            </label>
+            <p className="setting-description">
+              Automatically assign a Visitor ID & save face photo when an unregistered person appears in front of the camera
+            </p>
+          </div>
+
+          <div className="setting-item">
+            <label>
+              Visitor Detection Frames
+              <span className="setting-value">{settings.auto_register_required_hits || 3}</span>
+            </label>
+            <input
+              type="range"
+              min="1"
+              max="8"
+              step="1"
+              value={settings.auto_register_required_hits || 3}
+              onChange={(e) => handleChange('auto_register_required_hits', parseInt(e.target.value))}
+              className="slider"
+              disabled={!settings.enable_auto_register_unknown}
+            />
+            <p className="setting-description">
+              Consecutive stable face frames required before auto-creating Visitor profile
+            </p>
+          </div>
+        </div>
+
+        <div className="card settings-section">
           <h2>SYSTEM</h2>
           <div className="system-info">
             <div className="info-item">
@@ -200,6 +242,10 @@ function Settings() {
             <div className="info-item">
               <span className="info-label">Recognizer</span>
               <span className="info-value">SFace</span>
+            </div>
+            <div className="info-item">
+              <span className="info-label">Visitor Mode</span>
+              <span className="info-value">{settings.enable_auto_register_unknown ? 'AUTO-ASSIGN' : 'OFF'}</span>
             </div>
             <div className="info-item">
               <span className="info-label">Tracking</span>
