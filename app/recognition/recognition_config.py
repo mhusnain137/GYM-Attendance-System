@@ -41,7 +41,7 @@ RTSP_FRAME_FAILURE_THRESHOLD = 30  # consecutive frame failures before attemptin
 
 FACE_CONFIDENCE = 0.65
 NMS_THRESHOLD = 0.30
-TOP_K = 5000
+TOP_K = 1000
 DETECTION_WIDTH = 640
 
 
@@ -49,19 +49,19 @@ DETECTION_WIDTH = 640
 # RECOGNITION
 # ============================================================
 
-RECOGNITION_THRESHOLD = 0.52
-MIN_MATCH_MARGIN = 0.08
+RECOGNITION_THRESHOLD = 0.50
+MIN_MATCH_MARGIN = 0.06
 
 
 # ============================================================
 # WEAK MATCH TEMPORAL CONFIRMATION
 # ============================================================
 
-WEAK_MATCH_THRESHOLD = 0.46
+WEAK_MATCH_THRESHOLD = 0.44
 WEAK_MATCH_REQUIRED_HITS = 5
 WEAK_MATCH_WINDOW = 8
 WEAK_MATCH_MIN_FACE_CONFIDENCE = 0.70
-WEAK_MATCH_MIN_FACE_SIZE = 45
+WEAK_MATCH_MIN_FACE_SIZE = 35
 
 
 # ============================================================
@@ -88,7 +88,7 @@ REGISTRATION_FRAME_GAP = 5
 FACE_CROPS_DIR = os.path.join(PROJECT_ROOT, "data", "face_crops")
 ENABLE_AUTO_REGISTER_UNKNOWN = True
 AUTO_REGISTER_MIN_CONFIDENCE = 0.65
-AUTO_REGISTER_MIN_SIZE = 45
+AUTO_REGISTER_MIN_SIZE = 35
 AUTO_REGISTER_REQUIRED_HITS = 5
 ENABLE_CLAHE_LIGHTING_NORM = True
 CLAHE_CLIP_LIMIT = 2.0
