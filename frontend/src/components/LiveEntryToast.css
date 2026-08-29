@@ -67,6 +67,11 @@
   border-left: 5px solid #10B981;
 }
 
+.live-entry-toast.trial-entry {
+  border-left: 5px solid #06B6D4;
+  background: #ECFEFF;
+}
+
 .live-entry-toast.expiring-alert {
   border-left: 5px solid #F59E0B;
   background: #FFFBEB;
@@ -171,6 +176,19 @@
   background: #E8F8EE;
   color: #065F46;
   border-radius: var(--radius-sm);
+}
+
+.toast-trial-pill {
+  padding: 1px 7px;
+  background: #CFFAFE;
+  color: #0E7490;
+  border-radius: var(--radius-sm);
+  font-weight: 800;
+}
+
+.toast-trial-pill.expired {
+  background: #FFE4E6;
+  color: #BE123C;
 }
 
 .expired-alert .toast-plan-pill {

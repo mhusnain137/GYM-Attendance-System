@@ -2,8 +2,39 @@
  * Utility functions for Membership calculation and formatting
  */
 
-export const calculateMembershipInfo = (membership) => {
+export const calculateMembershipInfo = (membership, trialInfo = null) => {
   if (!membership || !membership.expiry_date) {
+    if (trialInfo && (trialInfo.trial_days_used || trialInfo.days_used)) {
+      const daysUsed = trialInfo.trial_days_used || trialInfo.days_used;
+      const daysLeft = Math.max(0, 5 - daysUsed);
+      if (daysUsed <= 5) {
+        return {
+          status: 'TRIAL',
+          label: `Free Trial: Day ${daysUsed} of 5 (${daysLeft}d left)`,
+          badgeText: `⏳ Day ${daysUsed}/5`,
+          daysLeft: daysLeft,
+          badgeClass: 'badge-cyan',
+          color: '#06b6d4',
+          isExpiringSoon: false,
+          isExpired: false,
+          isFrozen: false,
+          isActive: true
+        };
+      } else {
+        return {
+          status: 'TRIAL_EXPIRED',
+          label: `Trial Expired (${daysUsed}d attended)`,
+          badgeText: `🚨 Trial Over`,
+          daysLeft: 0,
+          badgeClass: 'badge-danger',
+          color: '#ef4444',
+          isExpiringSoon: false,
+          isExpired: true,
+          isFrozen: false,
+          isActive: false
+        };
+      }
+    }
     return {
       status: 'NO_MEMBERSHIP',
       label: 'No Active Membership',

@@ -40,6 +40,12 @@
   border: 2px solid #64748B;
 }
 
+.expired-alert-banner.trial-expired {
+  background: linear-gradient(135deg, #FFF1F2 0%, #FFE4E6 100%);
+  border: 2px solid #E11D48;
+  box-shadow: 0 8px 24px rgba(225, 29, 72, 0.28);
+}
+
 .banner-inner-container {
   display: flex;
   justify-content: space-between;
@@ -114,6 +120,7 @@
 .frozen .banner-badge { background: #0284C7; color: #FFFFFF; }
 .expiring .banner-badge { background: #F59E0B; color: #FFFFFF; }
 .nopass .banner-badge { background: #64748B; color: #FFFFFF; }
+.trial-expired .banner-badge { background: #E11D48; color: #FFFFFF; }
 
 .banner-time {
   font-size: 0.72rem;
@@ -143,6 +150,43 @@
 .frozen .banner-sub-msg { color: #0369A1; }
 .expiring .banner-sub-msg { color: #B45309; }
 .nopass .banner-sub-msg { color: #475569; }
+.trial-expired .banner-sub-msg { color: #BE123C; }
+
+.banner-countdown-box {
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.countdown-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.countdown-pill.trial-expired {
+  background: #FFE4E6;
+  border: 1.5px solid #F43F5E;
+  color: #9F1239;
+}
+
+.countdown-pill.expired {
+  background: #FEE2E2;
+  border: 1.5px solid #EF4444;
+  color: #991B1B;
+}
+
+.countdown-pill.expiring {
+  background: #FEF3C7;
+  border: 1.5px solid #F59E0B;
+  color: #92400E;
+}
 
 .banner-right-actions {
   display: flex;

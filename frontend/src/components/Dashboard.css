@@ -389,3 +389,146 @@
   font-size: 0.8rem;
   font-weight: 800;
 }
+
+/* Live Smart Door Access Status Indicator */
+.door-access-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  margin-bottom: 14px;
+  border: 1.5px solid transparent;
+  transition: all 0.25s ease;
+}
+
+.door-access-indicator.door-unlocked {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12) 0%, rgba(5, 150, 105, 0.18) 100%);
+  border-color: #10B981;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.2);
+}
+
+.door-access-indicator.door-denied {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.18) 100%);
+  border-color: #EF4444;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.25);
+}
+
+.door-access-indicator.door-idle {
+  background: var(--c-sand-light);
+  border-color: var(--c-sand);
+}
+
+.door-indicator-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.door-indicator-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.door-indicator-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.door-indicator-badge {
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.door-unlocked .door-indicator-badge {
+  background: #10B981;
+  color: #FFFFFF;
+}
+
+.door-denied .door-indicator-badge {
+  background: #EF4444;
+  color: #FFFFFF;
+}
+
+.door-idle .door-indicator-badge {
+  background: #64748B;
+  color: #FFFFFF;
+}
+
+.door-indicator-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--c-slate);
+}
+
+.door-indicator-msg {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--c-slate-light);
+  margin-top: 2px;
+}
+
+.door-unlocked .door-indicator-msg {
+  color: #047857;
+  font-weight: 700;
+}
+
+.door-denied .door-indicator-msg {
+  color: #B91C1C;
+  font-weight: 700;
+}
+
+.door-pulse-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.door-countdown-badge {
+  background: rgba(0, 0, 0, 0.07);
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  color: var(--c-slate);
+  letter-spacing: 0.02em;
+}
+
+.door-unlocked .door-countdown-badge {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: #10B981;
+  color: #065F46;
+}
+
+.door-denied .door-countdown-badge {
+  background: rgba(239, 68, 68, 0.18);
+  border-color: #EF4444;
+  color: #991B1B;
+}
+
+.door-light {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.door-light.green {
+  background: #10B981;
+  box-shadow: 0 0 10px #10B981;
+}
+
+.door-light.red {
+  background: #EF4444;
+  box-shadow: 0 0 10px #EF4444;
+}
+
+.door-light.gray {
+  background: #94A3B8;
+}

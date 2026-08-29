@@ -293,6 +293,81 @@ class RecognitionService:
         except Exception as e:
             print(f"Error recording visit: {e}")
     
+    def auto_unfreeze_membership_if_needed(self, person_id, person_name):
+        """Auto-unfreeze membership if it is currently FROZEN when the member appears in front of the camera"""
+        if not person_id or person_id == "Unknown" or str(person_id).startswith("VISITOR"):
+            return False
+
+        try:
+            memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+            if not os.path.exists(memberships_file):
+                return False
+
+            from datetime import datetime, timedelta
+            today_dt = datetime.now()
+            today_str = today_dt.strftime("%Y-%m-%d")
+
+            with self.lock:
+                with open(memberships_file, "r", encoding="utf-8") as f:
+                    memberships = json.load(f)
+
+                if not isinstance(memberships, list):
+                    return False
+
+                unfrozen_any = False
+                unfrozen_details = []
+
+                for m in memberships:
+                    m_pid = (m.get("person_id") or "").strip().lower()
+                    if m_pid == str(person_id).strip().lower() and m.get("status") == "FROZEN":
+                        # Calculate frozen duration to extend expiry date
+                        frozen_at_str = m.get("frozen_at") or (m.get("updated_at") or "").split("T")[0]
+                        days_frozen = 0
+                        if frozen_at_str:
+                            try:
+                                frozen_dt = datetime.strptime(frozen_at_str[:10], "%Y-%m-%d")
+                                days_frozen = max(0, (today_dt.date() - frozen_dt.date()).days)
+                            except Exception:
+                                days_frozen = 0
+
+                        # Extend expiry date by days_frozen if expiry_date exists
+                        if days_frozen > 0 and m.get("expiry_date"):
+                            try:
+                                old_exp = datetime.strptime(m["expiry_date"], "%Y-%m-%d")
+                                new_exp = old_exp + timedelta(days=days_frozen)
+                                m["expiry_date"] = new_exp.strftime("%Y-%m-%d")
+                            except Exception as ex:
+                                print(f"Error extending expiry date: {ex}")
+
+                        m["status"] = "ACTIVE"
+                        m["freeze_reason"] = ""
+                        m["unfrozen_at"] = today_str
+                        m["updated_at"] = today_dt.isoformat()
+                        m["notes"] = (m.get("notes", "") + f" | Auto-Unfrozen at camera check-in on {today_str}" + (f" (extended {days_frozen}d)" if days_frozen > 0 else "")).strip(" |")
+                        unfrozen_any = True
+                        unfrozen_details.append(f"{m.get('membership_id')}: extended {days_frozen} days")
+
+                if unfrozen_any:
+                    temp_file = memberships_file + ".tmp"
+                    with open(temp_file, "w", encoding="utf-8") as f:
+                        json.dump(memberships, f, indent=4)
+                    os.replace(temp_file, memberships_file)
+
+                    print(f"[AUTO-UNFREEZE] Unfroze membership for {person_name} ({person_id}): {', '.join(unfrozen_details)}")
+                    if self.event_callback:
+                        try:
+                            self.event_callback({
+                                "type": "MEMBERSHIP",
+                                "message": f"Auto-Unfroze membership for {person_name} ({person_id}) upon camera arrival" + (f" (extended {days_frozen}d)" if days_frozen > 0 else ""),
+                                "person_id": person_id
+                            })
+                        except Exception as cb_err:
+                            print(f"Error invoking event_callback: {cb_err}")
+                    return True
+        except Exception as e:
+            print(f"Error in auto_unfreeze_membership_if_needed: {e}")
+        return False
+    
     def generate_person_id(self, persons):
         """Generate new person ID"""
         highest_number = 0
@@ -818,6 +893,7 @@ class RecognitionService:
                     best_track["candidate_name"] = None
                     best_track["candidate_scores"] = []
                     best_track["candidate_hits"] = 0
+                    self.auto_unfreeze_membership_if_needed(person_id, person_name)
                 else:
                     best_track["last_embed_frame"] = frame_number
             else:
@@ -828,6 +904,9 @@ class RecognitionService:
                     best_track["candidate_scores"] = []
                     best_track["candidate_hits"] = 0
                     
+                    # Auto-unfreeze membership if currently frozen
+                    self.auto_unfreeze_membership_if_needed(person_id, person_name)
+
                     # Record attendance for confirmed registered person
                     # Only record if this is the first confirmation for this track
                     if not best_track.get("attendance_recorded", False):

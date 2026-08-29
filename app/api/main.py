@@ -57,6 +57,7 @@ async def startup_event():
     """Initialize recognition service on startup"""
     global recognition_service
     recognition_service = RecognitionService()
+    recognition_service.event_callback = lambda ev: add_event(ev.get("type", "SYSTEM"), ev.get("message", ""), ev.get("data"))
     add_event("SYSTEM", "Recognition service initialized")
 
 @app.on_event("shutdown")
@@ -111,12 +112,28 @@ async def get_state():
         active_alerts = []
         
         memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+        attendance_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "attendance.json")
+        visits_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "visits.json")
+
         memberships = load_json_file(memberships_file)
+        attendance_records = load_json_file(attendance_file)
+        visits_records = load_json_file(visits_file)
+
         memberships_by_pid = {}
         for m in memberships:
             pid = m.get("person_id")
             if pid:
                 memberships_by_pid[pid.lower()] = m
+
+        # Calculate distinct visit dates per person_id
+        visit_dates_by_pid = {}
+        for rec in attendance_records + visits_records:
+            r_pid = (rec.get("person_id") or "").lower().strip()
+            r_date = rec.get("date")
+            if r_pid and r_date:
+                if r_pid not in visit_dates_by_pid:
+                    visit_dates_by_pid[r_pid] = set()
+                visit_dates_by_pid[r_pid].add(r_date)
 
         today_str = datetime.now().strftime("%Y-%m-%d")
         
@@ -145,7 +162,12 @@ async def get_state():
                 "phone": "",
                 "is_alert": False,
                 "alert_type": None,
-                "alert_message": None
+                "alert_message": None,
+                "door_open": False,
+                "access_status": "PENDING",
+                "door_reason": "Verifying",
+                "trial_days_used": 0,
+                "trial_days_left": 5
             }
             
             # Enrich with membership details
@@ -171,27 +193,85 @@ async def get_state():
                 person_data["days_left"] = days_left
                 
                 if m_status == "FROZEN":
-                    person_data["membership_status"] = "FROZEN"
-                    person_data["is_alert"] = True
-                    person_data["alert_type"] = "FROZEN"
-                    person_data["alert_message"] = f"Membership is currently FROZEN"
+                    if is_confirmed and recognition_service:
+                        recognition_service.auto_unfreeze_membership_if_needed(pid, pname)
+                        # Re-read membership info after auto-unfreeze
+                        refreshed_memberships = load_json_file(memberships_file)
+                        refreshed_m = next((rm for rm in refreshed_memberships if (rm.get("person_id") or "").lower() == pid.lower()), None)
+                        if refreshed_m:
+                            exp_date = refreshed_m.get("expiry_date", exp_date)
+                            m_status = refreshed_m.get("status", "ACTIVE")
+                            person_data["expiry_date"] = exp_date
+                            try:
+                                exp_dt = datetime.strptime(exp_date, "%Y-%m-%d").date()
+                                today_dt = datetime.strptime(today_str, "%Y-%m-%d").date()
+                                days_left = (exp_dt - today_dt).days
+                            except Exception:
+                                pass
+                            person_data["days_left"] = days_left
+                        person_data["membership_status"] = "ACTIVE"
+                        person_data["is_alert"] = False
+                        person_data["door_open"] = True
+                        person_data["access_status"] = "GRANTED"
+                        person_data["door_reason"] = f"Auto-Unfrozen Active Member ({plan_name})"
+                    else:
+                        person_data["membership_status"] = "FROZEN"
+                        person_data["is_alert"] = True
+                        person_data["alert_type"] = "FROZEN"
+                        person_data["alert_message"] = f"Membership is currently FROZEN"
+                        person_data["door_open"] = False
+                        person_data["access_status"] = "DENIED"
+                        person_data["door_reason"] = "Door Locked: Membership FROZEN"
                 elif days_left < 0 or m_status == "EXPIRED":
                     person_data["membership_status"] = "EXPIRED"
                     person_data["is_alert"] = True
                     person_data["alert_type"] = "EXPIRED"
                     person_data["alert_message"] = f"Pass EXPIRED on {exp_date} ({abs(days_left)}d ago)"
+                    person_data["door_open"] = False
+                    person_data["access_status"] = "DENIED"
+                    person_data["door_reason"] = f"Door Locked: Pass EXPIRED on {exp_date}"
                 elif days_left <= 3:
                     person_data["membership_status"] = "EXPIRING_SOON"
                     person_data["is_alert"] = True
                     person_data["alert_type"] = "EXPIRING_SOON"
                     person_data["alert_message"] = f"Pass expiring in {days_left} day{'s' if days_left != 1 else ''}"
+                    person_data["door_open"] = True
+                    person_data["access_status"] = "GRANTED"
+                    person_data["door_reason"] = f"Door Open: Active Member ({days_left}d left)"
                 else:
                     person_data["membership_status"] = "ACTIVE"
-            elif pid and pid != "Unknown" and not pid.startswith("VISITOR"):
-                person_data["membership_status"] = "NO_PASS"
-                person_data["is_alert"] = True
-                person_data["alert_type"] = "NO_PASS"
-                person_data["alert_message"] = "No active membership pass found"
+                    person_data["door_open"] = True
+                    person_data["access_status"] = "GRANTED"
+                    person_data["door_reason"] = f"Door Open: Active Member ({plan_name})"
+            elif pid and pid != "Unknown":
+                # Person without an active membership (Visitor or unassigned member)
+                # Apply 5-Day Free Trial Limit:
+                past_dates = visit_dates_by_pid.get(pid.lower().strip(), set())
+                all_dates = past_dates | {today_str} if is_confirmed else past_dates
+                total_visit_days = max(1, len(all_dates)) if (is_confirmed or past_dates) else 0
+
+                person_data["trial_days_used"] = total_visit_days
+                person_data["trial_days_left"] = max(0, 5 - total_visit_days)
+
+                if total_visit_days <= 5:
+                    # Within 5-Day Free Trial: Allow entry and open door
+                    person_data["membership_status"] = "TRIAL"
+                    person_data["plan_name"] = f"5-Day Trial (Day {total_visit_days}/5)"
+                    person_data["is_alert"] = False
+                    person_data["door_open"] = True
+                    person_data["access_status"] = "TRIAL_GRANTED"
+                    remaining_str = f"{5 - total_visit_days} days left" if (5 - total_visit_days) > 0 else "Last trial day today"
+                    person_data["door_reason"] = f"Free Trial: Day {total_visit_days} of 5 ({remaining_str})"
+                else:
+                    # 6th day onwards (> 5 days): Block entry and keep door locked!
+                    person_data["membership_status"] = "TRIAL_EXPIRED"
+                    person_data["plan_name"] = f"Trial Over ({total_visit_days}d used)"
+                    person_data["is_alert"] = True
+                    person_data["alert_type"] = "TRIAL_EXPIRED"
+                    person_data["alert_message"] = f"5-Day Free Trial EXPIRED ({total_visit_days} days attended). Door Locked - Membership Required!"
+                    person_data["door_open"] = False
+                    person_data["access_status"] = "DENIED"
+                    person_data["door_reason"] = f"Door Locked: 5-Day Trial Exhausted ({total_visit_days}d visited)"
 
             # Determine status
             if person_data["confirmed"]:
@@ -205,6 +285,7 @@ async def get_state():
                         "alert_message": person_data["alert_message"],
                         "expiry_date": person_data["expiry_date"],
                         "days_left": person_data["days_left"],
+                        "trial_days_used": person_data.get("trial_days_used", 0),
                         "phone": person_data["phone"],
                         "plan_name": person_data["plan_name"],
                         "timestamp": datetime.now().strftime("%I:%M:%S %p")
@@ -215,6 +296,47 @@ async def get_state():
                 person_data["status"] = "UNKNOWN"
                 
             people.append(person_data)
+
+        # Compute overall camera door status
+        active_confirmed = [p for p in people if p.get("confirmed")]
+        if active_confirmed:
+            denied_list = [p for p in active_confirmed if not p.get("door_open", False)]
+            if denied_list:
+                denied_person = denied_list[0]
+                door_status = {
+                    "open": False,
+                    "status": "LOCKED",
+                    "badge": "🔴 DOOR LOCKED",
+                    "person_name": denied_person.get("name"),
+                    "person_id": denied_person.get("person_id"),
+                    "message": denied_person.get("door_reason", "Access Denied"),
+                    "trial_info": f"{denied_person.get('trial_days_used', 0)}/5 Days Used" if denied_person.get("alert_type") == "TRIAL_EXPIRED" else None,
+                    "color": "#EF4444"
+                }
+            else:
+                granted_person = active_confirmed[0]
+                is_trial = granted_person.get("access_status") == "TRIAL_GRANTED"
+                door_status = {
+                    "open": True,
+                    "status": "OPEN",
+                    "badge": "🟢 DOOR UNLOCKED",
+                    "person_name": granted_person.get("name"),
+                    "person_id": granted_person.get("person_id"),
+                    "message": granted_person.get("door_reason", "Access Granted"),
+                    "trial_info": f"Trial Day {granted_person.get('trial_days_used', 1)} of 5" if is_trial else "Active Member",
+                    "color": "#10B981"
+                }
+        else:
+            door_status = {
+                "open": False,
+                "status": "IDLE",
+                "badge": "🔒 DOOR SECURED",
+                "person_name": None,
+                "person_id": None,
+                "message": "Waiting for face detection...",
+                "trial_info": None,
+                "color": "#64748B"
+            }
         
         return {
             "camera": True,
@@ -223,7 +345,8 @@ async def get_state():
             "active_tracks": len(tracks),
             "registered_people": recognition_service.get_registered_count(),
             "people": people,
-            "active_alerts": active_alerts
+            "active_alerts": active_alerts,
+            "door_status": door_status
         }
     
     return {
@@ -233,7 +356,17 @@ async def get_state():
         "active_tracks": 0,
         "registered_people": recognition_service.get_registered_count() if recognition_service else 0,
         "people": [],
-        "active_alerts": []
+        "active_alerts": [],
+        "door_status": {
+            "open": False,
+            "status": "OFFLINE",
+            "badge": "🔒 DOOR SECURED",
+            "person_name": None,
+            "person_id": None,
+            "message": "Camera is offline",
+            "trial_info": None,
+            "color": "#64748B"
+        }
     }
 
 @app.get("/api/people")
@@ -465,14 +598,51 @@ async def get_attendance():
 
 @app.get("/api/attendance/today")
 async def get_today_attendance():
-    """Get today's attendance records"""
+    """Get today's attendance records with trial countdown data"""
     global recognition_service
     if recognition_service:
         from datetime import datetime
         today = datetime.now().strftime("%Y-%m-%d")
         attendance = recognition_service.load_attendance()
         today_attendance = [record for record in attendance if record.get("date") == today]
-        return resolve_person_names(today_attendance)
+        records = resolve_person_names(today_attendance)
+
+        # Enrich records with membership status and 5-day trial countdown
+        try:
+            memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+            visits_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "visits.json")
+            memberships = load_json_file(memberships_file)
+            visits = load_json_file(visits_file)
+            
+            memberships_by_pid = {m.get("person_id", "").lower(): m for m in memberships if m.get("person_id")}
+            visit_dates_by_pid = {}
+            for rec in attendance + visits:
+                r_pid = (rec.get("person_id") or "").lower().strip()
+                r_date = rec.get("date")
+                if r_pid and r_date:
+                    if r_pid not in visit_dates_by_pid:
+                        visit_dates_by_pid[r_pid] = set()
+                    visit_dates_by_pid[r_pid].add(r_date)
+
+            for r in records:
+                r_pid = (r.get("person_id") or "").lower().strip()
+                mem = memberships_by_pid.get(r_pid)
+                if mem and mem.get("status") == "ACTIVE":
+                    r["membership_status"] = "ACTIVE"
+                    r["is_trial"] = False
+                    r["plan_name"] = mem.get("plan_name", "Standard Pass")
+                else:
+                    distinct_count = len(visit_dates_by_pid.get(r_pid, set()))
+                    days_used = max(1, distinct_count)
+                    r["trial_days_used"] = days_used
+                    r["trial_days_left"] = max(0, 5 - days_used)
+                    r["is_trial"] = (days_used <= 5)
+                    r["is_trial_expired"] = (days_used > 5)
+                    r["membership_status"] = "TRIAL" if (days_used <= 5) else "TRIAL_EXPIRED"
+        except Exception as e:
+            print("Error enriching attendance with trial info:", e)
+
+        return records
     return []
 
 @app.get("/api/visits")
@@ -977,26 +1147,50 @@ async def freeze_membership(membership_id: str, data: dict):
             from datetime import datetime
             m["status"] = "FROZEN"
             m["freeze_reason"] = data.get("reason", "")
+            m["frozen_at"] = datetime.now().strftime("%Y-%m-%d")
             m["updated_at"] = datetime.now().isoformat()
             save_json_file(memberships_file, memberships)
-            add_event("MEMBERSHIP", f"Froze membership {membership_id}")
+            add_event("MEMBERSHIP", f"Froze membership {membership_id} (Reason: {data.get('reason', 'N/A')})")
             return {"status": "success", "message": "Membership frozen successfully", "data": m}
             
     return {"status": "error", "message": "Membership not found"}
 
 @app.post("/api/memberships/{membership_id}/unfreeze")
 async def unfreeze_membership(membership_id: str):
-    """Unfreeze a membership"""
+    """Unfreeze a membership and extend expiry date by frozen duration"""
     memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
     memberships = load_json_file(memberships_file)
     
     for m in memberships:
         if m.get("membership_id") == membership_id:
-            from datetime import datetime
+            from datetime import datetime, timedelta
+            today_dt = datetime.now()
+            today_str = today_dt.strftime("%Y-%m-%d")
+            frozen_at_str = m.get("frozen_at") or (m.get("updated_at") or "").split("T")[0]
+            days_frozen = 0
+            if frozen_at_str:
+                try:
+                    frozen_dt = datetime.strptime(frozen_at_str[:10], "%Y-%m-%d")
+                    days_frozen = max(0, (today_dt.date() - frozen_dt.date()).days)
+                except Exception:
+                    days_frozen = 0
+                    
+            if days_frozen > 0 and m.get("expiry_date"):
+                try:
+                    old_exp = datetime.strptime(m["expiry_date"], "%Y-%m-%d")
+                    new_exp = old_exp + timedelta(days=days_frozen)
+                    m["expiry_date"] = new_exp.strftime("%Y-%m-%d")
+                except Exception as ex:
+                    print(f"Error extending expiry date: {ex}")
+                    
             m["status"] = "ACTIVE"
-            m["updated_at"] = datetime.now().isoformat()
+            m["freeze_reason"] = ""
+            m["unfrozen_at"] = today_str
+            m["updated_at"] = today_dt.isoformat()
+            if days_frozen > 0:
+                m["notes"] = (m.get("notes", "") + f" | Unfrozen on {today_str} (extended {days_frozen}d)").strip(" |")
             save_json_file(memberships_file, memberships)
-            add_event("MEMBERSHIP", f"Unfroze membership {membership_id}")
+            add_event("MEMBERSHIP", f"Unfroze membership {membership_id}" + (f" (extended {days_frozen}d)" if days_frozen > 0 else ""))
             return {"status": "success", "message": "Membership unfrozen successfully", "data": m}
             
     return {"status": "error", "message": "Membership not found"}

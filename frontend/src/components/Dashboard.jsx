@@ -247,9 +247,9 @@ function Dashboard({ systemStatus }) {
     }
   };
 
-  const renderMembershipBadge = (personId) => {
+  const renderMembershipBadge = (personId, record = null) => {
     const mem = getPersonMembership(personId, memberships);
-    const info = calculateMembershipInfo(mem);
+    const info = calculateMembershipInfo(mem, record);
     return (
       <span className={`membership-pill ${info.badgeClass}`} title={`Membership: ${info.label}`}>
         {info.badgeText}
@@ -420,6 +420,34 @@ function Dashboard({ systemStatus }) {
               </div>
             </div>
 
+            {/* Smart Door Access Status Bar */}
+            <div className={`door-access-indicator ${recognitionState.door_status?.open ? 'door-unlocked' : (recognitionState.door_status?.status === 'LOCKED' ? 'door-denied' : 'door-idle')}`}>
+              <div className="door-indicator-left">
+                <div className="door-indicator-icon">
+                  {recognitionState.door_status?.open ? '🚪🔓' : (recognitionState.door_status?.status === 'LOCKED' ? '🚫🔒' : '🚪🔒')}
+                </div>
+                <div>
+                  <div className="door-indicator-title">
+                    <span className="door-indicator-badge">{recognitionState.door_status?.badge || '🔒 DOOR SECURED'}</span>
+                    {recognitionState.door_status?.person_name && (
+                      <span className="door-indicator-name">— {recognitionState.door_status.person_name}</span>
+                    )}
+                  </div>
+                  <div className="door-indicator-msg">
+                    {recognitionState.door_status?.message || 'Access Control System Ready'}
+                  </div>
+                </div>
+              </div>
+              <div className="door-pulse-indicator">
+                {recognitionState.door_status?.trial_info && (
+                  <span className="door-countdown-badge">
+                    ⏳ {recognitionState.door_status.trial_info}
+                  </span>
+                )}
+                <span className={`door-light ${recognitionState.door_status?.open ? 'green' : (recognitionState.door_status?.status === 'LOCKED' ? 'red' : 'gray')}`} />
+              </div>
+            </div>
+
             <div className="camera-container">
               {cameraRunning ? (
                 <img
@@ -475,7 +503,7 @@ function Dashboard({ systemStatus }) {
                       </div>
                     </div>
                     <div>
-                      {renderMembershipBadge(record.person_id)}
+                      {renderMembershipBadge(record.person_id, record)}
                     </div>
                   </div>
                 ))
