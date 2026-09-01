@@ -3,6 +3,7 @@ import axios from 'axios';
 import { calculateMembershipInfo, formatCurrency } from '../utils/membershipUtils';
 import { formatWhatsAppNumber, generateWhatsAppReminderText, openWhatsApp, formatTemplateMessage, getExpiringMemberships } from '../utils/whatsappUtils';
 import MemberProfileModal from './MemberProfileModal';
+import { useAuth } from '../context/AuthContext';
 import './Membership.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -40,6 +41,7 @@ const DEFAULT_MEMBERSHIP_PLANS = [
 ];
 
 function Membership() {
+  const { canDelete, canFreezePass, isReceptionist } = useAuth();
   const [memberships, setMemberships] = useState([]);
   const [plans, setPlans] = useState(DEFAULT_MEMBERSHIP_PLANS);
   const [people, setPeople] = useState([]);
@@ -755,21 +757,25 @@ function Membership() {
                         <button onClick={() => { setActiveMenuId(null); openEditModal(m); }}>
                           ✏️ Edit Details
                         </button>
-                        {m.status === 'FROZEN' ? (
-                          <button onClick={() => { setActiveMenuId(null); handleUnfreezeMembership(m.membership_id); }}>
-                            ☀️ Unfreeze Pass
-                          </button>
-                        ) : (
-                          <button onClick={() => { setActiveMenuId(null); setSelectedMembership(m); setShowFreezeModal(true); }}>
-                            ❄️ Freeze Pass
-                          </button>
+                        {canFreezePass && (
+                          m.status === 'FROZEN' ? (
+                            <button onClick={() => { setActiveMenuId(null); handleUnfreezeMembership(m.membership_id); }}>
+                              ☀️ Unfreeze Pass
+                            </button>
+                          ) : (
+                            <button onClick={() => { setActiveMenuId(null); setSelectedMembership(m); setShowFreezeModal(true); }}>
+                              ❄️ Freeze Pass
+                            </button>
+                          )
                         )}
                         <button onClick={() => { setActiveMenuId(null); openHistoryModal(m); }}>
                           📜 Payment History
                         </button>
-                        <button className="menu-delete-btn" onClick={() => { setActiveMenuId(null); handleDeleteMembership(m.membership_id); }}>
-                          🗑️ Delete Record
-                        </button>
+                        {canDelete && (
+                          <button className="menu-delete-btn" onClick={() => { setActiveMenuId(null); handleDeleteMembership(m.membership_id); }}>
+                            🗑️ Delete Record
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

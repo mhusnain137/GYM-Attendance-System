@@ -5,6 +5,11 @@ import Settings from './components/Settings';
 import Activity from './components/Activity';
 import Attendance from './components/Attendance';
 import Membership from './components/Membership';
+import Cafe from './components/Cafe';
+import StaffManager from './components/StaffManager';
+import MemberPortal from './components/MemberPortal';
+import Login from './components/Login';
+import { AuthProvider, useAuth, ROLES, ROLE_LABELS } from './context/AuthContext';
 import './App.css';
 
 const THEMES = [
@@ -15,7 +20,8 @@ const THEMES = [
   { value: 'high-contrast', label: 'High Contrast' }
 ];
 
-function App() {
+function AppContent() {
+  const { isAuthenticated, role, user, logout, isAdmin, isManager, isReceptionist, isMember, canManageStaff } = useAuth();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [systemStatus, setSystemStatus] = useState({
     camera: false,
@@ -28,7 +34,6 @@ function App() {
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
 
   useEffect(() => {
-    // Load saved theme from localStorage
     try {
       const savedTheme = localStorage.getItem('personIdentityTheme');
       if (savedTheme && THEMES.some(t => t.value === savedTheme)) {
@@ -37,49 +42,42 @@ function App() {
       }
     } catch (error) {
       console.error('Error loading theme from localStorage:', error);
-      // Use default theme if localStorage fails
     }
 
-    // Poll system status every second
     const interval = setInterval(async () => {
       try {
         const response = await fetch('/api/status');
         const data = await response.json();
         setSystemStatus(data);
       } catch (error) {
-        console.error('Error fetching status:', error);
+        // Silently catch network drops
       }
     }, 1000);
 
     return () => clearInterval(interval);
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showThemeDropdown && !event.target.closest('.theme-selector')) {
-        setShowThemeDropdown(false);
-      }
-    };
-
-    if (showThemeDropdown) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showThemeDropdown]);
-
-  const handleThemeChange = (theme) => {
-    setCurrentTheme(theme);
-    document.documentElement.setAttribute('data-theme', theme);
+  const handleThemeChange = (themeValue) => {
+    setCurrentTheme(themeValue);
+    document.documentElement.setAttribute('data-theme', themeValue);
     try {
-      localStorage.setItem('personIdentityTheme', theme);
+      localStorage.setItem('personIdentityTheme', themeValue);
     } catch (error) {
       console.error('Error saving theme to localStorage:', error);
     }
     setShowThemeDropdown(false);
   };
 
+  // If not authenticated, render Login Screen
+  if (!isAuthenticated) {
+    return <Login />;
+  }
+
   const renderPage = () => {
+    if (isMember) {
+      return <MemberPortal />;
+    }
+
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard systemStatus={systemStatus} />;
@@ -87,12 +85,16 @@ function App() {
         return <People />;
       case 'membership':
         return <Membership />;
+      case 'cafe':
+        return <Cafe />;
       case 'attendance':
         return <Attendance />;
       case 'activity':
-        return <Activity />;
+        return isAdmin ? <Activity /> : <Dashboard systemStatus={systemStatus} />;
+      case 'staff':
+        return isAdmin ? <StaffManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'settings':
-        return <Settings />;
+        return isAdmin ? <Settings /> : <Dashboard systemStatus={systemStatus} />;
       default:
         return <Dashboard systemStatus={systemStatus} />;
     }
@@ -100,41 +102,75 @@ function App() {
 
   return (
     <div className="app">
-      {/* Top Header Bar */}
+      {/* Top Bar / Header */}
       <header className="app-header-top">
         <div className="brand-section">
-          <div className="brand-logo">🏋️</div>
+          <div className="brand-logo">🛡️</div>
           <div className="brand-title-group">
-            <h1>GYM ATTENDANCE & BIOMETRICS</h1>
-            <p>AI Identity System • YuNet & SFace Engine</p>
+            <h1>TITAN GYM SYSTEM</h1>
+            <p>Smart AI Recognition & POS Solution</p>
           </div>
         </div>
 
+        {/* Authenticated User Profile & Header Actions */}
         <div className="header-status-group">
+          {/* Logged in User Badge */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'var(--c-sand-light, #FAF8F5)',
+            border: '1.5px solid var(--c-sand, #D8D2C8)',
+            padding: '6px 14px',
+            borderRadius: '9999px'
+          }}>
+            <span style={{ fontSize: '0.82rem', color: 'var(--c-slate, #344054)', fontWeight: 700 }}>
+              {user?.name || user?.username || 'Logged In'}
+            </span>
+            <span style={{
+              background: 'var(--c-mocha-light, #F5EBE6)',
+              color: 'var(--c-mocha, #875F45)',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: '6px',
+              textTransform: 'uppercase'
+            }}>
+              {role}
+            </span>
+          </div>
+
+          {/* AI Camera Status */}
           <div className="status-pill-badge">
-            <span className={`status-dot ${systemStatus.camera ? 'active' : ''}`} />
-            <span>{systemStatus.camera ? 'CAMERA ONLINE' : 'CAMERA OFFLINE'}</span>
+            <span className={`status-dot ${systemStatus.camera ? 'online' : ''}`}></span>
+            <span>{systemStatus.camera ? 'AI CAMERA LIVE' : 'CAMERA OFFLINE'}</span>
           </div>
 
-          <div className="status-pill-badge" style={{ color: 'var(--color-primary)' }}>
-            <span>🧠 Registered: {systemStatus.registered_people || 0} Members</span>
-          </div>
-
-          <div className="theme-selector">
+          {/* Theme Dropdown */}
+          <div style={{ position: 'relative' }}>
             <button 
-              className="button button-secondary"
-              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+              style={{
+                background: 'var(--c-sand-light, #FAF8F5)',
+                border: '1.5px solid var(--c-sand, #D8D2C8)',
+                color: 'var(--c-slate, #344054)',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
               onClick={() => setShowThemeDropdown(!showThemeDropdown)}
+              title="Change UI Color Theme"
             >
-              🎨 Theme ▼
+              🎨 {THEMES.find(t => t.value === currentTheme)?.label || 'Theme'}
             </button>
+
             {showThemeDropdown && (
-              <div className="theme-dropdown" style={{ position: 'absolute', right: 28, top: 60, background: 'var(--bg-dark-card)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 8, zIndex: 200, display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div className="theme-dropdown" style={{ minWidth: '150px' }}>
                 {THEMES.map(theme => (
                   <button
                     key={theme.value}
-                    className={`button button-secondary ${currentTheme === theme.value ? 'button-primary' : ''}`}
-                    style={{ padding: '6px 12px', justifyContent: 'flex-start', fontSize: '0.8rem' }}
+                    className={`theme-option ${currentTheme === theme.value ? 'active' : ''}`}
                     onClick={() => handleThemeChange(theme.value)}
                   >
                     {theme.label}
@@ -143,68 +179,121 @@ function App() {
               </div>
             )}
           </div>
+
+          {/* Logout Button */}
+          <button
+            style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1.5px solid rgba(239, 68, 68, 0.3)',
+              color: '#B91C1C',
+              padding: '6px 14px',
+              borderRadius: '9999px',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            onClick={logout}
+            title="Log out of current session"
+          >
+            🚪 Log Out
+          </button>
         </div>
       </header>
 
-      {/* Main Body with Sidebar + Content */}
+      {/* Main Body */}
       <div className="app-body">
-        <nav className="sidebar">
-          <div className="sidebar-nav">
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('dashboard')}
-            >
-              <span className="nav-item-icon">📺</span>
-              <span>Live Dashboard</span>
-            </div>
+        {/* Sidebar Navigation — Role Guarded */}
+        {!isMember && (
+          <nav className="sidebar">
+            <div className="sidebar-nav">
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'dashboard' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('dashboard')}
+              >
+                <span className="nav-item-icon">📺</span>
+                <span>{isReceptionist ? 'Front Desk Arrival' : 'Live Dashboard'}</span>
+              </div>
 
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'people' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('people')}
-            >
-              <span className="nav-item-icon">👥</span>
-              <span>People Directory</span>
-            </div>
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'people' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('people')}
+              >
+                <span className="nav-item-icon">👥</span>
+                <span>People Directory</span>
+              </div>
 
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'membership' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('membership')}
-            >
-              <span className="nav-item-icon">💳</span>
-              <span>Gym Memberships</span>
-            </div>
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'membership' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('membership')}
+              >
+                <span className="nav-item-icon">💳</span>
+                <span>Gym Memberships</span>
+              </div>
 
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'attendance' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('attendance')}
-            >
-              <span className="nav-item-icon">📅</span>
-              <span>Attendance & Visits</span>
-            </div>
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'cafe' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('cafe')}
+              >
+                <span className="nav-item-icon">🥤</span>
+                <span>Gym Cafe & POS</span>
+              </div>
 
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'activity' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('activity')}
-            >
-              <span className="nav-item-icon">📋</span>
-              <span>Activity Audit Log</span>
-            </div>
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'attendance' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('attendance')}
+              >
+                <span className="nav-item-icon">📅</span>
+                <span>Attendance & Visits</span>
+              </div>
 
-            <div 
-              className={`sidebar-nav-item ${currentPage === 'settings' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('settings')}
-            >
-              <span className="nav-item-icon">⚙️</span>
-              <span>System Settings</span>
+              {/* Admin Only Navigation Links */}
+              {isAdmin && (
+                <>
+                  <div 
+                    className={`sidebar-nav-item ${currentPage === 'staff' ? 'active' : ''}`}
+                    onClick={() => setCurrentPage('staff')}
+                  >
+                    <span className="nav-item-icon">👔</span>
+                    <span>Staff & Roles</span>
+                  </div>
+
+                  <div 
+                    className={`sidebar-nav-item ${currentPage === 'activity' ? 'active' : ''}`}
+                    onClick={() => setCurrentPage('activity')}
+                  >
+                    <span className="nav-item-icon">📋</span>
+                    <span>Activity Audit Log</span>
+                  </div>
+
+                  <div 
+                    className={`sidebar-nav-item ${currentPage === 'settings' ? 'active' : ''}`}
+                    onClick={() => setCurrentPage('settings')}
+                  >
+                    <span className="nav-item-icon">⚙️</span>
+                    <span>System Settings</span>
+                  </div>
+                </>
+              )}
             </div>
-          </div>
-        </nav>
+          </nav>
+        )}
 
         <main className="main-content">
           {renderPage()}
         </main>
       </div>
     </div>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 

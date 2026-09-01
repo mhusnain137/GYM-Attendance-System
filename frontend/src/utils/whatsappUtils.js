@@ -81,6 +81,57 @@ export const getExpiringMemberships = (memberships = [], daysThreshold = 3) => {
   });
 };
 
+// Generates professional WhatsApp Cafe POS receipt text
+export const generateCafeWhatsAppReceipt = (order, gymName = 'Titan Gym Cafe') => {
+  if (!order) return '';
+
+  const dateStr = order.created_at ? new Date(order.created_at).toLocaleString('en-PK', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }) : new Date().toLocaleString();
+
+  let totalProtein = 0;
+  let totalCalories = 0;
+
+  const itemLines = (order.items || []).map(itm => {
+    const qty = itm.qty || 1;
+    totalProtein += (itm.protein_g || 0) * qty;
+    totalCalories += (itm.calories || 0) * qty;
+
+    let line = `• ${qty}x *${itm.name}* - Rs. ${itm.unit_price * qty}`;
+    if (itm.protein_g > 0 || itm.calories > 0) {
+      line += ` (${itm.protein_g}g Pro | ${itm.calories} kcal)`;
+    }
+    if (itm.addons && itm.addons.length > 0) {
+      line += `\n   └ _${itm.addons.join(', ')}_`;
+    }
+    return line;
+  }).join('\n');
+
+  let paymentText = order.payment_method || 'CASH';
+  if (order.payment_method === 'MEMBER_TAB') {
+    paymentText = 'Member Tab / Khata';
+  } else if (order.payment_method === 'QR_ONLINE') {
+    paymentText = 'JazzCash / EasyPaisa QR';
+  }
+
+  return `🥤 *${gymName.toUpperCase()}* 🏋️‍♂️\n` +
+    `*Receipt #:* \`${order.id}\`\n` +
+    `*Customer:* ${order.customer_name || 'Walk-in Customer'}\n` +
+    `*Date:* ${dateStr}\n` +
+    `----------------------------------\n` +
+    `${itemLines}\n` +
+    `----------------------------------\n` +
+    `*Subtotal:* Rs. ${order.subtotal}\n` +
+    (order.discount > 0 ? `*Discount:* -Rs. ${order.discount}\n` : '') +
+    `*Total Bill:* *Rs. ${order.total_amount}*\n` +
+    `*Payment Status:* [${order.payment_status || 'PAID'}] via ${paymentText}\n` +
+    (order.served_by ? `*Billed By:* ${order.served_by}\n` : '') +
+    `----------------------------------\n` +
+    `⚡ *Total Macros:* ~${Math.round(totalProtein)}g Protein | ~${totalCalories} kcal\n` +
+    `Fuel your gains & enjoy your workout! 💪🔥`;
+};
+
 // Opens WhatsApp Web or App directly with prefilled number and message
 export const openWhatsApp = (phone, message) => {
   const cleanPhone = formatWhatsAppNumber(phone);

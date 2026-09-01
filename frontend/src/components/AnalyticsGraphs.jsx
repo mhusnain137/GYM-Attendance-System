@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import './AnalyticsGraphs.css';
 
 function AnalyticsGraphs() {
+  const { isReceptionist } = useAuth();
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,20 +49,25 @@ function AnalyticsGraphs() {
         <div>
           <h2>📊 GYM INSIGHTS & PERFORMANCE ANALYTICS</h2>
           <p className="analytics-subtitle">
-            Live Monthly Financial Collections & 24-Hour Peak Workout Footfall
+            {isReceptionist 
+              ? "24-Hour Peak Workout Footfall & Rush Distribution"
+              : "Live Monthly Financial Collections & 24-Hour Peak Workout Footfall"
+            }
           </p>
         </div>
 
         <div className="analytics-kpi-chips">
-          <div className="kpi-chip rev">
-            <span className="kpi-chip-label">This Month:</span>
-            <span className="kpi-chip-val">{formatCurrency(kpis.this_month_revenue)}</span>
-            {kpis.growth_percentage !== 0 && (
-              <span className={`kpi-growth ${kpis.growth_percentage > 0 ? 'up' : 'down'}`}>
-                {kpis.growth_percentage > 0 ? `▲ +${kpis.growth_percentage}%` : `▼ ${kpis.growth_percentage}%`}
-              </span>
-            )}
-          </div>
+          {!isReceptionist && (
+            <div className="kpi-chip rev">
+              <span className="kpi-chip-label">This Month:</span>
+              <span className="kpi-chip-val">{formatCurrency(kpis.this_month_revenue)}</span>
+              {kpis.growth_percentage !== 0 && (
+                <span className={`kpi-growth ${kpis.growth_percentage > 0 ? 'up' : 'down'}`}>
+                  {kpis.growth_percentage > 0 ? `▲ +${kpis.growth_percentage}%` : `▼ ${kpis.growth_percentage}%`}
+                </span>
+              )}
+            </div>
+          )}
 
           <div className="kpi-chip peak">
             <span className="kpi-chip-label">🔥 Peak Rush:</span>
@@ -69,56 +76,58 @@ function AnalyticsGraphs() {
         </div>
       </div>
 
-      <div className="analytics-cards-grid">
-        {/* Graph 1: Monthly Revenue Bar Chart */}
-        <div className="card analytics-chart-card">
-          <div className="chart-card-top">
-            <div>
-              <h3>📈 Monthly Fee Collections (PKR)</h3>
-              <span className="chart-card-sub">Last 6 Months Revenue Trend</span>
-            </div>
-            <span className="chart-lifetime-badge">
-              Lifetime: <strong>{formatCurrency(kpis.total_lifetime_revenue)}</strong>
-            </span>
-          </div>
-
-          {loading ? (
-            <div className="chart-loading">Loading financial charts...</div>
-          ) : (
-            <div className="bar-chart-container">
-              <div className="bar-chart-canvas">
-                {monthly.map((m, idx) => {
-                  const heightPercent = Math.max(8, (m.revenue / maxMonthlyRevenue) * 100);
-                  const isCurrentMonth = idx === monthly.length - 1;
-
-                  return (
-                    <div key={m.month} className="bar-column">
-                      <div className="bar-value-tooltip">
-                        {formatCurrency(m.revenue)}
-                        <div className="bar-tooltip-sub">{m.transactions} passes</div>
-                      </div>
-
-                      <div className="bar-track">
-                        <div 
-                          className={`bar-fill ${isCurrentMonth ? 'current' : ''}`}
-                          style={{ height: `${heightPercent}%` }}
-                        >
-                          {m.revenue > 0 && (
-                            <span className="bar-inner-label">{Math.round(m.revenue / 1000)}k</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <span className={`bar-label ${isCurrentMonth ? 'active' : ''}`}>
-                        {m.label.split(' ')[0]}
-                      </span>
-                    </div>
-                  );
-                })}
+      <div className="analytics-cards-grid" style={isReceptionist ? { gridTemplateColumns: '1fr' } : {}}>
+        {/* Graph 1: Monthly Revenue Bar Chart (Hidden for Receptionist) */}
+        {!isReceptionist && (
+          <div className="card analytics-chart-card">
+            <div className="chart-card-top">
+              <div>
+                <h3>📈 Monthly Fee Collections (PKR)</h3>
+                <span className="chart-card-sub">Last 6 Months Revenue Trend</span>
               </div>
+              <span className="chart-lifetime-badge">
+                Lifetime: <strong>{formatCurrency(kpis.total_lifetime_revenue)}</strong>
+              </span>
             </div>
-          )}
-        </div>
+
+            {loading ? (
+              <div className="chart-loading">Loading financial charts...</div>
+            ) : (
+              <div className="bar-chart-container">
+                <div className="bar-chart-canvas">
+                  {monthly.map((m, idx) => {
+                    const heightPercent = Math.max(8, (m.revenue / maxMonthlyRevenue) * 100);
+                    const isCurrentMonth = idx === monthly.length - 1;
+
+                    return (
+                      <div key={m.month} className="bar-column">
+                        <div className="bar-value-tooltip">
+                          {formatCurrency(m.revenue)}
+                          <div className="bar-tooltip-sub">{m.transactions} passes</div>
+                        </div>
+
+                        <div className="bar-track">
+                          <div 
+                            className={`bar-fill ${isCurrentMonth ? 'current' : ''}`}
+                            style={{ height: `${heightPercent}%` }}
+                          >
+                            {m.revenue > 0 && (
+                              <span className="bar-inner-label">{Math.round(m.revenue / 1000)}k</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <span className={`bar-label ${isCurrentMonth ? 'active' : ''}`}>
+                          {m.label.split(' ')[0]}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Graph 2: 24-Hour Peak Rush Distribution Heatmap */}
         <div className="card analytics-chart-card">

@@ -4,7 +4,8 @@ import os
 # Add the recognition module to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'recognition'))
 
-from fastapi import FastAPI, Response, UploadFile, File
+from fastapi import FastAPI, Response, UploadFile, File, Header, HTTPException
+from typing import Optional, List, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,8 +20,12 @@ import asyncio
 # Import recognition components
 import recognition_config
 from recognition_service import RecognitionService
+from cafe_routes import router as cafe_router
+from auth_routes import router as auth_router
 
 app = FastAPI(title="Person Identity System API")
+app.include_router(cafe_router)
+app.include_router(auth_router)
 
 os.makedirs(recognition_config.FACE_CROPS_DIR, exist_ok=True)
 app.mount("/api/face-crops", StaticFiles(directory=recognition_config.FACE_CROPS_DIR), name="face-crops")
@@ -1468,6 +1473,25 @@ async def get_member_profile(person_id: str):
     if total_paid == 0 and active_membership:
         total_paid = float(active_membership.get("amount", 0))
 
+    # Cafe History & Nutrition Metrics
+    cafe_orders_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "cafe_orders.json")
+    cafe_orders_all = load_json_file(cafe_orders_file, default=[])
+    user_cafe_orders = [
+        o for o in cafe_orders_all 
+        if (o.get("person_id") or "").lower() == person_id.lower() 
+        and o.get("order_status") != "CANCELLED"
+    ]
+    total_cafe_spent = sum(float(o.get("total_amount", 0)) for o in user_cafe_orders)
+    total_cafe_protein = 0.0
+    total_cafe_calories = 0
+    for o in user_cafe_orders:
+        for itm in o.get("items", []):
+            qty = itm.get("qty", 1)
+            total_cafe_protein += float(itm.get("protein_g", 0.0)) * qty
+            total_cafe_calories += int(itm.get("calories", 0)) * qty
+
+    cafe_tab_balance = float(active_membership.get("cafe_tab_balance", 0.0)) if active_membership else 0.0
+
     return {
         "status": "success",
         "person": {
@@ -1489,8 +1513,84 @@ async def get_member_profile(person_id: str):
         },
         "attendance_calendar": att_calendar,
         "recent_attendance": user_att[:20],
-        "payments_history": user_payments
+        "payments_history": user_payments,
+        "cafe_metrics": {
+            "total_spent_pkr": round(total_cafe_spent, 2),
+            "total_protein_g": round(total_cafe_protein, 1),
+            "total_calories_kcal": total_cafe_calories,
+            "cafe_tab_balance": round(cafe_tab_balance, 2),
+            "orders_count": len(user_cafe_orders)
+        },
+        "cafe_history": list(reversed(user_cafe_orders))
     }
+
+
+@app.post("/api/memberships/{person_id}/freeze")
+async def freeze_membership(person_id: str, x_role: Optional[str] = Header(None, alias="X-User-Role")):
+    """Freeze / pause membership validity (Manager & Admin only)"""
+    if x_role and x_role.upper() == "RECEPTIONIST":
+        raise HTTPException(status_code=403, detail="Permission Denied: Receptionist cannot freeze passes")
+
+    memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+    memberships = load_json_file(memberships_file)
+    found = False
+
+    for m in memberships:
+        if (m.get("person_id") or "").lower() == person_id.lower() and m.get("status") == "ACTIVE":
+            m["status"] = "FROZEN"
+            m["frozen_at"] = datetime.now().isoformat()
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Active membership not found for this member")
+
+    save_json_file(memberships_file, memberships)
+    return {"status": "success", "message": f"Membership for {person_id} has been FROZEN (paused)."}
+
+
+@app.post("/api/memberships/{person_id}/unfreeze")
+async def unfreeze_membership(person_id: str, x_role: Optional[str] = Header(None, alias="X-User-Role")):
+    """Unfreeze / resume membership validity and extend expiry date (Manager & Admin only)"""
+    if x_role and x_role.upper() == "RECEPTIONIST":
+        raise HTTPException(status_code=403, detail="Permission Denied: Receptionist cannot unfreeze passes")
+
+    memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+    memberships = load_json_file(memberships_file)
+    found = False
+
+    for m in memberships:
+        if (m.get("person_id") or "").lower() == person_id.lower() and m.get("status") == "FROZEN":
+            frozen_at_str = m.get("frozen_at")
+            days_frozen = 1
+            if frozen_at_str:
+                try:
+                    f_date = datetime.fromisoformat(frozen_at_str.replace("Z", ""))
+                    days_frozen = max(1, (datetime.now() - f_date).days)
+                except Exception:
+                    pass
+
+            # Extend expiry date by days_frozen
+            exp_str = m.get("expiry_date")
+            if exp_str:
+                try:
+                    cur_exp = datetime.strptime(exp_str[:10], "%Y-%m-%d")
+                    new_exp = cur_exp + timedelta(days=days_frozen)
+                    m["expiry_date"] = new_exp.strftime("%Y-%m-%d")
+                except Exception:
+                    pass
+
+            m["status"] = "ACTIVE"
+            m["unfrozen_at"] = datetime.now().isoformat()
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(status_code=404, detail="Frozen membership not found for this member")
+
+    save_json_file(memberships_file, memberships)
+    return {"status": "success", "message": f"Membership for {person_id} RESUMED and expiry extended by {days_frozen} day(s)."}
+
 
 if __name__ == "__main__":
     import uvicorn

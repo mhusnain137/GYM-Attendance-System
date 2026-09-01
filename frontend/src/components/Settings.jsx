@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useAuth } from '../context/AuthContext';
 import '../App.css';
 import './Settings.css';
 
 function Settings() {
+  const { canEditSettings, isAdmin } = useAuth();
   const [settings, setSettings] = useState({
     recognition_threshold: 0.52,
     weak_match_threshold: 0.46,
@@ -64,14 +66,29 @@ function Settings() {
       <div className="page-header">
         <h1>SETTINGS</h1>
         <div className="settings-actions">
-          <button className="button button-danger" onClick={resetSettings}>
+          <button className="button button-danger" onClick={resetSettings} disabled={!canEditSettings}>
             RESET
           </button>
-          <button className="button button-success" onClick={saveSettings}>
+          <button className="button button-success" onClick={saveSettings} disabled={!canEditSettings}>
             {saved ? '✓ SAVED' : 'SAVE'}
           </button>
         </div>
       </div>
+
+      {!canEditSettings && (
+        <div style={{
+          background: 'rgba(245, 158, 11, 0.15)',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          borderRadius: '10px',
+          padding: '0.85rem 1.25rem',
+          marginBottom: '1rem',
+          color: 'var(--warning)',
+          fontWeight: 600,
+          fontSize: '0.88rem'
+        }}>
+          🔒 System hardware and AI recognition threshold settings are locked for Super Admin only.
+        </div>
+      )}
 
       <div className="settings-grid">
         <div className="card settings-section">

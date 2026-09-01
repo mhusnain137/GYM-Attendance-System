@@ -1,0 +1,213 @@
+/* ==========================================================================
+   LOGIN SCREEN STYLES — WARM LUXURY EARTH THEME
+   ========================================================================== */
+
+.login-page-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg-dark-root, #F8F6F2);
+  padding: 1.5rem;
+  box-sizing: border-box;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 480px;
+  background: #FFFFFF;
+  border: 2px solid var(--c-sand, #D8D2C8);
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(52, 64, 84, 0.08);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header */
+.login-header {
+  background: linear-gradient(135deg, #FAF8F5, #F2EFE9);
+  border-bottom: 2px solid var(--c-sand, #D8D2C8);
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+}
+
+.login-brand-logo {
+  width: 52px;
+  height: 52px;
+  background: linear-gradient(135deg, #875F45, #5A3E2D);
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  margin: 0 auto 0.75rem auto;
+  box-shadow: 0 6px 18px rgba(135, 95, 69, 0.25);
+  color: #FFFFFF;
+}
+
+.login-header h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--c-slate, #344054);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.login-header p {
+  font-size: 0.82rem;
+  color: var(--c-mocha, #875F45);
+  font-weight: 600;
+  margin: 0.3rem 0 0 0;
+}
+
+/* Tabs */
+.login-tabs-row {
+  display: flex;
+  border-bottom: 2px solid var(--c-sand, #D8D2C8);
+  background: #FAF8F5;
+}
+
+.login-tab-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.85rem 1rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--c-slate-light, #475467);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.login-tab-btn:hover {
+  background: #F2EFE9;
+  color: var(--c-slate, #344054);
+}
+
+.login-tab-btn.active {
+  background: #FFFFFF;
+  color: var(--c-mocha, #875F45);
+  border-bottom: 3px solid var(--c-mocha, #875F45);
+}
+
+/* Body Form */
+.login-body {
+  padding: 1.75rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.login-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.login-field-group label {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--c-slate, #344054);
+}
+
+.login-input {
+  width: 100%;
+  padding: 0.7rem 0.95rem;
+  background: #FFFFFF;
+  border: 1.5px solid var(--c-sand, #D8D2C8);
+  border-radius: 10px;
+  font-size: 0.92rem;
+  color: var(--c-slate, #344054);
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: var(--c-mocha, #875F45);
+  box-shadow: 0 0 0 3px rgba(135, 95, 69, 0.12);
+}
+
+.login-submit-btn {
+  background: linear-gradient(135deg, #875F45, #704E38);
+  color: #FFFFFF;
+  border: none;
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(135, 95, 69, 0.25);
+  margin-top: 0.4rem;
+}
+
+.login-submit-btn:hover {
+  background: linear-gradient(135deg, #704E38, #5A3E2D);
+  box-shadow: 0 6px 18px rgba(135, 95, 69, 0.35);
+  transform: translateY(-1px);
+}
+
+.login-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Demo Quick-Fill Section */
+.demo-quickfill-box {
+  margin-top: 0.5rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--c-sand, #D8D2C8);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.demo-quickfill-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--c-slate-light, #475467);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.demo-chips-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.demo-chip-btn {
+  background: var(--c-sage-light, #EFF4EE);
+  border: 1px solid var(--c-sage, #A8B8A5);
+  color: #2D4830;
+  padding: 0.35rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.demo-chip-btn:hover {
+  background: #DCE8DB;
+  transform: translateY(-1px);
+}
+
+.login-error-alert {
+  background: #FEE2E2;
+  border: 1px solid #F87171;
+  color: #B91C1C;
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}

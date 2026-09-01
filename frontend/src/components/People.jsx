@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
 import MemberProfileModal from './MemberProfileModal';
+import { useAuth } from '../context/AuthContext';
 import './People.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -30,6 +31,7 @@ function PersonAvatar({ name, personId, size = 54, className = '' }) {
 }
 
 function People() {
+  const { canDelete, isAdmin, isManager, isReceptionist } = useAuth();
   const [people, setPeople] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -625,7 +627,7 @@ function People() {
                   </div>
                 )}
 
-                {/* Actions Toolbar: 2 Clean Balanced Buttons */}
+                {/* Actions Toolbar */}
                 <div className="card-actions-row">
                   <button
                     className="btn-card-action btn-add-photo"
@@ -635,14 +637,27 @@ function People() {
                     <span>📸</span>
                     <span>Add Photo</span>
                   </button>
-                  <button
-                    className="btn-card-action btn-rename"
-                    title="Rename Person Name"
-                    onClick={() => handleRenameClick(person)}
-                  >
-                    <span>✏️</span>
-                    <span>Rename</span>
-                  </button>
+                  {!isReceptionist && (
+                    <button
+                      className="btn-card-action btn-rename"
+                      title="Rename Person Name"
+                      onClick={() => handleRenameClick(person)}
+                    >
+                      <span>✏️</span>
+                      <span>Rename</span>
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      className="btn-card-action btn-unregister"
+                      title="Remove Person from Database (Admin Only)"
+                      onClick={() => handleUnregisterClick(person)}
+                      style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)' }}
+                    >
+                      <span>🗑️</span>
+                      <span>Remove</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -698,21 +713,25 @@ function People() {
                         >
                           📸 Photo
                         </button>
-                        <button
-                          className="btn-card-action btn-rename table-btn"
-                          title="Rename Person"
-                          onClick={() => handleRenameClick(person)}
-                        >
-                          ✏️ Rename
-                        </button>
-                        <button
-                          className="btn-card-action btn-unregister table-btn"
-                          title="Remove Person from Database"
-                          onClick={() => handleUnregisterClick(person)}
-                          disabled={isDeleting}
-                        >
-                          🗑️ Remove
-                        </button>
+                        {!isReceptionist && (
+                          <button
+                            className="btn-card-action btn-rename table-btn"
+                            title="Rename Person"
+                            onClick={() => handleRenameClick(person)}
+                          >
+                            ✏️ Rename
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            className="btn-card-action btn-unregister table-btn"
+                            title="Remove Person from Database"
+                            onClick={() => handleUnregisterClick(person)}
+                            disabled={isDeleting}
+                          >
+                            🗑️ Remove
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

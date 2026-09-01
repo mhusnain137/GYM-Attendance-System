@@ -222,6 +222,12 @@ function MemberProfileModal({ personId, personName, onClose, onOpenRenew, onOpen
           >
             💳 Pass & Payment History
           </button>
+          <button 
+            className={`tab-btn ${activeTab === 'CAFE' ? 'active' : ''}`}
+            onClick={() => setActiveTab('CAFE')}
+          >
+            🥤 Cafe & Nutrition ({profileData?.cafe_history?.length || 0})
+          </button>
         </div>
 
         {/* Tab Content Body */}
@@ -374,6 +380,111 @@ function MemberProfileModal({ personId, personName, onClose, onOpenRenew, onOpen
                               📝 Note: {mem.notes}
                             </div>
                           )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* TAB 4: CAFE & NUTRITION HISTORY */}
+              {activeTab === 'CAFE' && (
+                <div className="payments-tab-pane">
+                  {/* Summary metrics header */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                    <div style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>TOTAL SPENT</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#10b981' }}>
+                        Rs. {profileData?.cafe_metrics?.total_spent_pkr || 0}
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(14, 165, 233, 0.1)', border: '1px solid rgba(14, 165, 233, 0.25)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>PROTEIN FUEL</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#38bdf8' }}>
+                        ~{profileData?.cafe_metrics?.total_protein_g || 0}g
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>TOTAL CALORIES</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#fbbf24' }}>
+                        ~{profileData?.cafe_metrics?.total_calories_kcal || 0} kcal
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.25)', borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>UNPAID TAB / KHATA</span>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#c084fc' }}>
+                        Rs. {profileData?.cafe_metrics?.cafe_tab_balance || 0}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Settle Khata Button */}
+                  {profileData?.cafe_metrics?.cafe_tab_balance > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '14px' }}>
+                      <button
+                        style={{
+                          background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '8px',
+                          padding: '8px 16px',
+                          fontWeight: 700,
+                          fontSize: '0.85rem',
+                          cursor: 'pointer',
+                          boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)'
+                        }}
+                        onClick={async () => {
+                          const curTab = profileData.cafe_metrics.cafe_tab_balance;
+                          const payAmount = prompt(`Enter amount paid by ${personName || 'member'} to clear Khata tab (Max Rs. ${curTab}):`, curTab);
+                          if (payAmount && !isNaN(payAmount) && Number(payAmount) > 0) {
+                            try {
+                              await axios.post(`/api/cafe/members/${personId}/settle-tab`, {
+                                amount_paid: Number(payAmount),
+                                payment_method: 'CASH'
+                              });
+                              alert(`Successfully settled Rs. ${payAmount} for ${personName || 'member'}`);
+                              fetchProfile();
+                            } catch (err) {
+                              console.error('Error settling tab:', err);
+                              alert('Failed to settle tab balance');
+                            }
+                          }
+                        }}
+                      >
+                        💳 Settle / Clear Khata Balance (Rs. {profileData.cafe_metrics.cafe_tab_balance})
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Orders list */}
+                  {(!profileData?.cafe_history || profileData.cafe_history.length === 0) ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--c-slate-light)' }}>
+                      No cafe or shake orders recorded for this member yet.
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {profileData.cafe_history.map(order => (
+                        <div key={order.id} className="membership-history-card">
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong style={{ fontSize: '0.95rem', color: '#fff' }}>#{order.id}</strong>
+                              <span style={{ fontSize: '0.78rem', color: '#94a3b8', marginLeft: '8px' }}>
+                                {new Date(order.created_at).toLocaleString()}
+                              </span>
+                            </div>
+                            <span className="status-pill-badge-mini active">
+                              Rs. {order.total_amount} [{order.payment_method}]
+                            </span>
+                          </div>
+
+                          <div style={{ marginTop: '8px', fontSize: '0.82rem', color: '#e2e8f0' }}>
+                            {order.items?.map((it, idx) => (
+                              <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '2px 0' }}>
+                                <span>• {it.qty}x {it.name} {it.addons?.length > 0 ? `(${it.addons.join(', ')})` : ''}</span>
+                                <span style={{ color: '#10b981' }}>Rs. {it.item_total}</span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       ))}
                     </div>
