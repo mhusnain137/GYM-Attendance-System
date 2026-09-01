@@ -564,18 +564,20 @@ function People() {
           {filteredPeople.map((person) => {
             return (
               <div key={person.person_id} className="person-card">
-                {/* Top-Right Quick Delete Icon Button */}
-                <button
-                  className="btn-card-top-delete"
-                  title="Remove Person from Database"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleUnregisterClick(person);
-                  }}
-                  disabled={isDeleting}
-                >
-                  🗑️
-                </button>
+                {/* Top-Right Quick Delete Icon Button (Admin Only) */}
+                {canDelete && (
+                  <button
+                    className="btn-card-top-delete"
+                    title="Remove Person from Database (Admin Only)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUnregisterClick(person);
+                    }}
+                    disabled={isDeleting}
+                  >
+                    🗑️
+                  </button>
+                )}
 
                 {/* Header Avatar & Basic Info */}
                 <div 
@@ -627,8 +629,8 @@ function People() {
                   </div>
                 )}
 
-                {/* Actions Toolbar */}
-                <div className="card-actions-row">
+                {/* Actions Toolbar (2 Balanced Buttons: Add Photo & Rename) */}
+                <div className="card-actions-row" style={isReceptionist ? { gridTemplateColumns: '1fr' } : {}}>
                   <button
                     className="btn-card-action btn-add-photo"
                     title="Add Extra Face Photo Sample"
@@ -645,17 +647,6 @@ function People() {
                     >
                       <span>✏️</span>
                       <span>Rename</span>
-                    </button>
-                  )}
-                  {canDelete && (
-                    <button
-                      className="btn-card-action btn-unregister"
-                      title="Remove Person from Database (Admin Only)"
-                      onClick={() => handleUnregisterClick(person)}
-                      style={{ background: 'rgba(239, 68, 68, 0.15)', color: 'var(--danger)', border: '1px solid rgba(239, 68, 68, 0.3)' }}
-                    >
-                      <span>🗑️</span>
-                      <span>Remove</span>
                     </button>
                   )}
                 </div>
