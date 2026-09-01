@@ -49,6 +49,7 @@ data/*.json
 data/face_crops/
 data/face_crops/*
 scratch/
+*.zip
 
 # IDE & System files
 .vscode/

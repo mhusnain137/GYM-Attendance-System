@@ -6,7 +6,11 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 
+import sys
 import recognition_config
+
+sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, "app"))
+from db import mongo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -17,6 +21,15 @@ PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.js
 def load_json(filepath: str, default=None):
     if default is None:
         default = []
+    if mongo.is_connected():
+        if filepath == USERS_FILE:
+            data = mongo.find_all("users")
+            if data:
+                return data
+        elif filepath == PERSONS_FILE:
+            data = mongo.find_all("persons")
+            if data:
+                return data
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
@@ -28,6 +41,11 @@ def load_json(filepath: str, default=None):
 
 
 def save_json(filepath: str, data: Any) -> bool:
+    if mongo.is_connected():
+        if filepath == USERS_FILE:
+            mongo.replace_all("users", data)
+        elif filepath == PERSONS_FILE:
+            mongo.replace_all("persons", data)
     try:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:

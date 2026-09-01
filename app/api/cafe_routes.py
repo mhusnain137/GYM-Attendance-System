@@ -6,8 +6,12 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
+import sys
 # Config & Project Root
 import recognition_config
+
+sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, "app"))
+from db import mongo
 
 router = APIRouter(prefix="/api/cafe", tags=["cafe"])
 
@@ -16,10 +20,23 @@ ORDERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "cafe_orders
 MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
 PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
 
+CAFE_FILE_TO_COLL = {
+    PRODUCTS_FILE: "cafe_products",
+    ORDERS_FILE: "cafe_orders",
+    MEMBERSHIPS_FILE: "memberships",
+    PERSONS_FILE: "persons",
+}
+
 
 def load_json(filepath: str, default=None):
     if default is None:
         default = []
+    if mongo.is_connected():
+        coll_name = CAFE_FILE_TO_COLL.get(filepath)
+        if coll_name:
+            data = mongo.find_all(coll_name)
+            if data is not None and len(data) > 0:
+                return data
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
@@ -31,6 +48,10 @@ def load_json(filepath: str, default=None):
 
 
 def save_json(filepath: str, data: Any) -> bool:
+    if mongo.is_connected():
+        coll_name = CAFE_FILE_TO_COLL.get(filepath)
+        if coll_name:
+            mongo.replace_all(coll_name, data)
     try:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "w", encoding="utf-8") as f:

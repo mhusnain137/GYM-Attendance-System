@@ -6,6 +6,10 @@ import time
 import threading
 from collections import deque
 import recognition_config
+import sys
+
+sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, "app"))
+from db import mongo
 
 
 class RecognitionService:
@@ -120,7 +124,11 @@ class RecognitionService:
         cv2.setNumThreads(os.cpu_count() or 4)
     
     def load_database(self):
-        """Load persons database"""
+        """Load persons database from MongoDB or local JSON fallback"""
+        if mongo.is_connected():
+            data = mongo.find_all("persons")
+            if data is not None and len(data) > 0:
+                return data
         try:
             with open(recognition_config.DATABASE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -132,14 +140,23 @@ class RecognitionService:
             return []
     
     def save_database(self, persons):
-        """Save persons database"""
-        temp_file = recognition_config.DATABASE_FILE + ".tmp"
-        with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(persons, f, indent=4)
-        os.replace(temp_file, recognition_config.DATABASE_FILE)
+        """Save persons database to MongoDB and local JSON backup"""
+        if mongo.is_connected() and isinstance(persons, list):
+            mongo.replace_all("persons", persons)
+        try:
+            temp_file = recognition_config.DATABASE_FILE + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(persons, f, indent=4)
+            os.replace(temp_file, recognition_config.DATABASE_FILE)
+        except Exception as e:
+            print("Database save error:", e)
     
     def load_attendance(self):
-        """Load attendance database"""
+        """Load attendance database from MongoDB or local JSON fallback"""
+        if mongo.is_connected():
+            data = mongo.find_all("attendance")
+            if data is not None and len(data) > 0:
+                return data
         try:
             with open(recognition_config.ATTENDANCE_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -151,11 +168,16 @@ class RecognitionService:
             return []
     
     def save_attendance(self, attendance):
-        """Save attendance database"""
-        temp_file = recognition_config.ATTENDANCE_FILE + ".tmp"
-        with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(attendance, f, indent=4)
-        os.replace(temp_file, recognition_config.ATTENDANCE_FILE)
+        """Save attendance database to MongoDB and local JSON backup"""
+        if mongo.is_connected() and isinstance(attendance, list):
+            mongo.replace_all("attendance", attendance)
+        try:
+            temp_file = recognition_config.ATTENDANCE_FILE + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(attendance, f, indent=4)
+            os.replace(temp_file, recognition_config.ATTENDANCE_FILE)
+        except Exception as e:
+            print("Attendance save error:", e)
     
     def record_attendance(self, person_id, person_name):
         """Record attendance for a person on today's date
@@ -227,7 +249,11 @@ class RecognitionService:
             return None
 
     def load_visits(self):
-        """Load visits log"""
+        """Load visits log from MongoDB or local JSON fallback"""
+        if mongo.is_connected():
+            data = mongo.find_all("visits")
+            if data is not None and len(data) > 0:
+                return data
         try:
             with open(recognition_config.VISITS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -239,11 +265,16 @@ class RecognitionService:
             return []
     
     def save_visits(self, visits):
-        """Save visits log"""
-        temp_file = recognition_config.VISITS_FILE + ".tmp"
-        with open(temp_file, "w", encoding="utf-8") as f:
-            json.dump(visits, f, indent=4)
-        os.replace(temp_file, recognition_config.VISITS_FILE)
+        """Save visits log to MongoDB and local JSON backup"""
+        if mongo.is_connected() and isinstance(visits, list):
+            mongo.replace_all("visits", visits)
+        try:
+            temp_file = recognition_config.VISITS_FILE + ".tmp"
+            with open(temp_file, "w", encoding="utf-8") as f:
+                json.dump(visits, f, indent=4)
+            os.replace(temp_file, recognition_config.VISITS_FILE)
+        except Exception as e:
+            print("Visits save error:", e)
     
     def record_visit(self, person_id, person_name):
         """Log every appearance of a person in front of camera (visit log)

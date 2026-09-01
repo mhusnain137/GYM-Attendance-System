@@ -1,8 +1,10 @@
 import sys
 import os
 
-# Add the recognition module to path
+# Add the recognition and app modules to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'recognition'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from db import mongo
 
 from fastapi import FastAPI, Response, UploadFile, File, Header, HTTPException
 from typing import Optional, List, Dict, Any
@@ -24,6 +26,14 @@ from cafe_routes import router as cafe_router
 from auth_routes import router as auth_router
 
 app = FastAPI(title="Person Identity System API")
+
+@app.on_event("startup")
+async def on_startup():
+    try:
+        mongo.migrate_local_data_to_mongo()
+    except Exception as e:
+        print(f"[Startup] DB migration notice: {e}")
+
 app.include_router(cafe_router)
 app.include_router(auth_router)
 
@@ -840,7 +850,26 @@ async def video_feed():
 # MEMBERSHIP MANAGEMENT API ENDPOINTS
 # ============================================================
 
+FILE_BASENAME_TO_COLL = {
+    "persons.json": "persons",
+    "memberships.json": "memberships",
+    "membership_plans.json": "membership_plans",
+    "payments.json": "payments",
+    "attendance.json": "attendance",
+    "visits.json": "visits",
+    "cafe_orders.json": "cafe_orders",
+    "cafe_products.json": "cafe_products",
+    "users.json": "users",
+}
+
 def load_json_file(filepath, default=[]):
+    if mongo.is_connected():
+        fname = os.path.basename(filepath)
+        coll_name = FILE_BASENAME_TO_COLL.get(fname)
+        if coll_name:
+            data = mongo.find_all(coll_name)
+            if data is not None and len(data) > 0:
+                return data
     if os.path.exists(filepath):
         try:
             with open(filepath, 'r', encoding='utf-8') as f:
@@ -851,6 +880,11 @@ def load_json_file(filepath, default=[]):
     return default
 
 def save_json_file(filepath, data):
+    if mongo.is_connected():
+        fname = os.path.basename(filepath)
+        coll_name = FILE_BASENAME_TO_COLL.get(fname)
+        if coll_name and isinstance(data, list):
+            mongo.replace_all(coll_name, data)
     try:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, 'w', encoding='utf-8') as f:
