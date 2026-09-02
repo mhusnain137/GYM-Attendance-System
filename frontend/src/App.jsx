@@ -8,6 +8,7 @@ import Membership from './components/Membership';
 import Cafe from './components/Cafe';
 import StaffManager from './components/StaffManager';
 import MemberPortal from './components/MemberPortal';
+import MemberWorkouts from './components/MemberWorkouts';
 import Login from './components/Login';
 import { AuthProvider, useAuth, ROLES, ROLE_LABELS } from './context/AuthContext';
 import './App.css';
@@ -19,6 +20,36 @@ const THEMES = [
   { value: 'light', label: 'Light' },
   { value: 'high-contrast', label: 'High Contrast' }
 ];
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('ErrorBoundary caught error:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: '#ef4444' }}>
+          <h3>⚠️ Something went wrong loading this section</h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{this.state.error?.message}</p>
+          <button 
+            onClick={() => { this.setState({ hasError: false }); window.location.reload(); }}
+            style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 700 }}
+          >
+            Reload Section
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 function AppContent() {
   const { isAuthenticated, role, user, logout, isAdmin, isManager, isReceptionist, isMember, canManageStaff } = useAuth();
@@ -32,6 +63,15 @@ function AppContent() {
   });
   const [currentTheme, setCurrentTheme] = useState('dark');
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
+
+  useEffect(() => {
+    const handleAvatarUpdated = (e) => {
+      setAvatarTimestamp(e.detail?.timestamp || Date.now());
+    };
+    window.addEventListener('profile-picture-updated', handleAvatarUpdated);
+    return () => window.removeEventListener('profile-picture-updated', handleAvatarUpdated);
+  }, []);
 
   useEffect(() => {
     try {
@@ -75,12 +115,28 @@ function AppContent() {
 
   const renderPage = () => {
     if (isMember) {
-      return <MemberPortal />;
+      return (
+        <ErrorBoundary>
+          <MemberPortal />
+        </ErrorBoundary>
+      );
     }
 
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard systemStatus={systemStatus} />;
+      case 'member-workouts':
+        return (
+          <ErrorBoundary>
+            <MemberWorkouts />
+          </ErrorBoundary>
+        );
+      case 'member-portal':
+        return (
+          <ErrorBoundary>
+            <MemberPortal />
+          </ErrorBoundary>
+        );
       case 'people':
         return <People />;
       case 'membership':
@@ -121,9 +177,34 @@ function AppContent() {
             gap: '8px',
             background: 'var(--c-sand-light, #FAF8F5)',
             border: '1.5px solid var(--c-sand, #D8D2C8)',
-            padding: '6px 14px',
+            padding: '4px 14px 4px 6px',
             borderRadius: '9999px'
           }}>
+            <div style={{
+              width: '26px',
+              height: '26px',
+              borderRadius: '50%',
+              overflow: 'hidden',
+              background: '#8b5cf6',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              flexShrink: 0,
+              position: 'relative'
+            }}>
+              {(user?.member_id || user?.user_id) ? (
+                <img 
+                  src={`/api/face-crops/${user.member_id || user.user_id}.jpg?t=${avatarTimestamp}`}
+                  alt=""
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 2 }}
+                  onError={(e) => { e.target.style.display = 'none'; }}
+                />
+              ) : null}
+              <span style={{ position: 'relative', zIndex: 1 }}>{(user?.name || user?.username || 'U').charAt(0).toUpperCase()}</span>
+            </div>
             <span style={{ fontSize: '0.82rem', color: 'var(--c-slate, #344054)', fontWeight: 700 }}>
               {user?.name || user?.username || 'Logged In'}
             </span>
@@ -247,6 +328,14 @@ function AppContent() {
               >
                 <span className="nav-item-icon">📅</span>
                 <span>Attendance & Visits</span>
+              </div>
+
+              <div 
+                className={`sidebar-nav-item ${currentPage === 'member-workouts' ? 'active' : ''}`}
+                onClick={() => setCurrentPage('member-workouts')}
+              >
+                <span className="nav-item-icon">🏋️</span>
+                <span>Member Workouts</span>
               </div>
 
               {/* Admin Only Navigation Links */}

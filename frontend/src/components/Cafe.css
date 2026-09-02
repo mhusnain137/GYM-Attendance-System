@@ -902,9 +902,25 @@
   color: var(--success, #10b981);
 }
 
+.order-status-pill.picked_up {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success, #10b981);
+}
+
+.order-status-pill.ready_for_pickup {
+  background: rgba(16, 185, 129, 0.25);
+  color: #34d399;
+  border: 1px solid #10b981;
+}
+
 .order-status-pill.preparing {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.order-status-pill.pending_approval {
   background: rgba(245, 158, 11, 0.2);
-  color: var(--warning, #f59e0b);
+  color: #fbbf24;
 }
 
 .order-status-pill.cancelled {

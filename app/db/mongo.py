@@ -172,6 +172,9 @@ DATA_FILE_MAP = {
     "visits": "visits.json",
     "cafe_products": "cafe_products.json",
     "cafe_orders": "cafe_orders.json",
+    "workout_templates": "workout_templates.json",
+    "workout_logs": "workout_logs.json",
+    "custom_exercises": "custom_exercises.json",
 }
 
 DEFAULT_ADMIN = [

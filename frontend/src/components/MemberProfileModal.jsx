@@ -107,7 +107,7 @@ function MemberProfileModal({ personId, personName, onClose, onOpenRenew, onOpen
             <div className="profile-avatar-large">
               {!cropImgError ? (
                 <img 
-                  src={`/api/crop/${personId}?t=${Date.now()}`} 
+                  src={`/api/face-crops/${personId}.jpg?t=${Date.now()}`} 
                   alt="" 
                   onError={() => setCropImgError(true)} 
                 />

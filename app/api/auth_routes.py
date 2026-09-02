@@ -16,6 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 USERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "users.json")
 PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
+MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
 
 
 def load_json(filepath: str, default=None):
@@ -28,6 +29,10 @@ def load_json(filepath: str, default=None):
                 return data
         elif filepath == PERSONS_FILE:
             data = mongo.find_all("persons")
+            if data:
+                return data
+        elif filepath == MEMBERSHIPS_FILE:
+            data = mongo.find_all("memberships")
             if data:
                 return data
     if os.path.exists(filepath):
@@ -107,8 +112,10 @@ async def login(payload: LoginModel):
 
     # 2. Check Gym Members (Log in using Member ID, Phone, or Name)
     persons = load_json(PERSONS_FILE, default=[])
+    memberships = load_json(MEMBERSHIPS_FILE, default=[])
     member = None
     
+    # 2a. Check persons.json
     for p in persons:
         pid = (p.get("id") or p.get("person_id") or "").lower()
         pname = (p.get("name") or "").lower()
@@ -118,12 +125,43 @@ async def login(payload: LoginModel):
             member = p
             break
             
-        # Normalization for IDs like P-1, P-0001 matching P-000001
         digits_input = ''.join(filter(str.isdigit, username_lower))
         digits_pid = ''.join(filter(str.isdigit, pid))
-        if digits_input and digits_pid and digits_input == digits_pid.lstrip('0'):
+        if digits_input and digits_pid and digits_input.lstrip('0') == digits_pid.lstrip('0'):
             member = p
             break
+
+        digits_phone = ''.join(filter(str.isdigit, pphone))
+        if digits_input and digits_phone and len(digits_input) >= 7 and digits_input.lstrip('0') == digits_phone.lstrip('0'):
+            member = p
+            break
+
+    # 2b. Check memberships.json if not found in persons
+    if not member:
+        for m in memberships:
+            mpid = (m.get("person_id") or m.get("membership_id") or "").lower()
+            mpname = (m.get("person_name") or "").lower()
+            mpphone = (m.get("phone") or "").strip()
+
+            if mpid == username_lower or mpname == username_lower or (mpphone and mpphone == username_lower):
+                member = {
+                    "id": m.get("person_id") or m.get("membership_id"),
+                    "person_id": m.get("person_id") or m.get("membership_id"),
+                    "name": m.get("person_name", "Member"),
+                    "phone": mpphone
+                }
+                break
+
+            digits_input = ''.join(filter(str.isdigit, username_lower))
+            digits_mpid = ''.join(filter(str.isdigit, mpid))
+            if digits_input and digits_mpid and digits_input.lstrip('0') == digits_mpid.lstrip('0'):
+                member = {
+                    "id": m.get("person_id") or m.get("membership_id"),
+                    "person_id": m.get("person_id") or m.get("membership_id"),
+                    "name": m.get("person_name", "Member"),
+                    "phone": mpphone
+                }
+                break
     
     if member:
         actual_id = member.get("id") or member.get("person_id")

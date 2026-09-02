@@ -866,14 +866,22 @@ function Cafe() {
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {['ALL', 'COMPLETED', 'PREPARING', 'CANCELLED'].map(st => (
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {[
+                { id: 'ALL', label: 'All' },
+                { id: 'PENDING_APPROVAL', label: 'Pending' },
+                { id: 'PREPARING', label: 'Preparing' },
+                { id: 'READY_FOR_PICKUP', label: 'Ready for Pickup' },
+                { id: 'PICKED_UP', label: 'Picked Up' },
+                { id: 'COMPLETED', label: 'Completed' },
+                { id: 'CANCELLED', label: 'Cancelled' }
+              ].map(st => (
                 <button
-                  key={st}
-                  className={`cat-pill ${ordersStatusFilter === st ? 'active' : ''}`}
-                  onClick={() => setOrdersStatusFilter(st)}
+                  key={st.id}
+                  className={`cat-pill ${ordersStatusFilter === st.id ? 'active' : ''}`}
+                  onClick={() => setOrdersStatusFilter(st.id)}
                 >
-                  {st}
+                  {st.label}
                 </button>
               ))}
             </div>
@@ -900,7 +908,10 @@ function Cafe() {
                       </div>
                     </div>
                     <span className={`order-status-pill ${ord.order_status.toLowerCase()}`}>
-                      {ord.order_status}
+                      {ord.order_status === 'READY_FOR_PICKUP' ? '🟢 Ready for Pickup' :
+                       ord.order_status === 'PICKED_UP' ? '✓ Picked Up' :
+                       ord.order_status === 'PENDING_APPROVAL' ? '🟡 Pending Approval' :
+                       ord.order_status}
                     </span>
                   </div>
 
@@ -908,10 +919,22 @@ function Cafe() {
                     👤 {ord.customer_name} {ord.person_id ? `(${ord.person_id})` : ''}
                   </div>
 
+                  {ord.order_status === 'CANCELLED' && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)', padding: '0.3rem 0.5rem', borderRadius: '6px' }}>
+                      ✕ Cancelled by: <strong>{ord.cancelled_by || 'Customer'}</strong> {ord.cancelled_at ? `(${new Date(ord.cancelled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                    </div>
+                  )}
+
+                  {ord.order_status === 'PICKED_UP' && (
+                    <div style={{ fontSize: '0.75rem', color: 'var(--success)', background: 'rgba(16, 185, 129, 0.1)', padding: '0.3rem 0.5rem', borderRadius: '6px' }}>
+                      ✓ Picked up by: <strong>{ord.picked_up_by || 'Customer'}</strong> {ord.picked_up_at ? `(${new Date(ord.picked_up_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                    </div>
+                  )}
+
                   <div className="order-items-compact">
                     {ord.items.map((itm, i) => (
                       <div key={i} style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{itm.qty}x {itm.name}</span>
+                        <span>{itm.qty}x {itm.name} {itm.addons && it.addons.length > 0 ? `(${itm.addons.join(', ')})` : ''}</span>
                         <span style={{ color: 'var(--success)' }}>Rs. {itm.item_total}</span>
                       </div>
                     ))}
@@ -982,15 +1005,51 @@ function Cafe() {
                       </button>
 
                       {ord.order_status === 'PREPARING' && (
+                        <>
+                          <button 
+                            style={{
+                              background: 'linear-gradient(135deg, #10b981, #059669)',
+                              color: '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              padding: '0.35rem 0.65rem',
+                              fontSize: '0.78rem',
+                              fontWeight: 700,
+                              cursor: 'pointer'
+                            }}
+                            onClick={() => handleUpdateOrderStatus(ord.id, 'READY_FOR_PICKUP')}
+                          >
+                            🟢 Ready
+                          </button>
+                          <button 
+                            className="prod-add-btn"
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.78rem' }}
+                            onClick={() => handleUpdateOrderStatus(ord.id, 'COMPLETED')}
+                          >
+                            ✓ Complete
+                          </button>
+                        </>
+                      )}
+
+                      {ord.order_status === 'READY_FOR_PICKUP' && (
                         <button 
-                          className="prod-add-btn"
-                          onClick={() => handleUpdateOrderStatus(ord.id, 'COMPLETED')}
+                          style={{
+                            background: 'linear-gradient(135deg, #10b981, #059669)',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            padding: '0.35rem 0.75rem',
+                            fontSize: '0.78rem',
+                            fontWeight: 700,
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleUpdateOrderStatus(ord.id, 'PICKED_UP')}
                         >
-                          ✓ Ready
+                          ✓ Hand Over / Picked Up
                         </button>
                       )}
 
-                      {ord.order_status !== 'CANCELLED' && ord.order_status !== 'PENDING_APPROVAL' && (
+                      {ord.order_status !== 'CANCELLED' && ord.order_status !== 'PENDING_APPROVAL' && ord.order_status !== 'PICKED_UP' && ord.order_status !== 'COMPLETED' && (
                         <button 
                           style={{
                             background: 'rgba(239, 68, 68, 0.15)',

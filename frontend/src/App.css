@@ -250,9 +250,50 @@ body {
 /* Main Content Area */
 .main-content {
   flex: 1;
+  min-width: 0;
   padding: 34px;
   overflow-y: auto;
   background-color: var(--c-linen);
+  box-sizing: border-box;
+}
+
+@media (max-width: 1024px) {
+  .main-content {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-body {
+    flex-direction: column;
+  }
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid var(--c-sand);
+    padding: 12px 14px;
+  }
+  .sidebar-nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .sidebar-nav-item {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+  .main-content {
+    padding: 14px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header-top {
+    padding: 10px 14px;
+  }
+  .main-content {
+    padding: 10px 6px;
+  }
 }
 
 /* Common Buttons */

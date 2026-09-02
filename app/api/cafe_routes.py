@@ -3,30 +3,28 @@ import json
 import uuid
 from datetime import datetime, date
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Header
 from pydantic import BaseModel
 
 import sys
-# Config & Project Root
 import recognition_config
 
-sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, "app"))
+sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, 'app'))
 from db import mongo
 
-router = APIRouter(prefix="/api/cafe", tags=["cafe"])
+router = APIRouter(prefix='/api/cafe', tags=['cafe'])
 
-PRODUCTS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "cafe_products.json")
-ORDERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "cafe_orders.json")
-MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
-PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
+PRODUCTS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'cafe_products.json')
+ORDERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'cafe_orders.json')
+MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'memberships.json')
+PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'persons.json')
 
 CAFE_FILE_TO_COLL = {
-    PRODUCTS_FILE: "cafe_products",
-    ORDERS_FILE: "cafe_orders",
-    MEMBERSHIPS_FILE: "memberships",
-    PERSONS_FILE: "persons",
+    PRODUCTS_FILE: 'cafe_products',
+    ORDERS_FILE: 'cafe_orders',
+    MEMBERSHIPS_FILE: 'memberships',
+    PERSONS_FILE: 'persons',
 }
-
 
 def load_json(filepath: str, default=None):
     if default is None:
@@ -39,13 +37,12 @@ def load_json(filepath: str, default=None):
                 return data
     if os.path.exists(filepath):
         try:
-            with open(filepath, "r", encoding="utf-8") as f:
+            with open(filepath, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception as e:
-            print(f"[Cafe] Error reading {filepath}: {e}")
+            print(f'[Cafe] Error reading {filepath}: {e}')
             return default
     return default
-
 
 def save_json(filepath: str, data: Any) -> bool:
     if mongo.is_connected():
@@ -54,17 +51,14 @@ def save_json(filepath: str, data: Any) -> bool:
             mongo.replace_all(coll_name, data)
     try:
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
+        with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         return True
     except Exception as e:
-        print(f"[Cafe] Error saving {filepath}: {e}")
+        print(f'[Cafe] Error saving {filepath}: {e}')
         return False
 
 
-# ============================================================
-# PYDANTIC MODELS
-# ============================================================
 class CafeProductItem(BaseModel):
     name: str
     category: str
@@ -334,7 +328,7 @@ async def create_order(payload: CreateOrderModel):
 @router.put("/orders/{order_id}/status")
 async def update_order_status(order_id: str, payload: UpdateOrderStatusModel):
     """
-    Update order status (PREPARING, COMPLETED, CANCELLED).
+    Update order status (PREPARING, READY_FOR_PICKUP, PICKED_UP, COMPLETED, CANCELLED).
     If CANCELLED: auto-restores inventory stock & reverses member tab if applicable.
     """
     orders = load_json(ORDERS_FILE, default=[])
@@ -352,22 +346,26 @@ async def update_order_status(order_id: str, payload: UpdateOrderStatusModel):
         
     old_status = found_order.get("order_status")
     new_status = payload.order_status.upper()
+    now_iso = datetime.now().isoformat()
     
     # If order is being cancelled now and wasn't already cancelled: restore stock!
     if new_status == "CANCELLED" and old_status != "CANCELLED":
-        products = load_json(PRODUCTS_FILE, default=[])
-        prod_map = {p["id"]: p for p in products}
-        
-        for item in found_order.get("items", []):
-            pid = item.get("product_id")
-            qty = item.get("qty", 1)
-            if pid in prod_map:
-                prod_map[pid]["stock"] = prod_map[pid].get("stock", 0) + qty
-                
-        save_json(PRODUCTS_FILE, list(prod_map.values()))
-        
-        # If was on member tab, reverse tab balance
-        if found_order.get("payment_method") == "MEMBER_TAB" and found_order.get("person_id"):
+        # Only restore stock if stock was deducted (i.e. not an unapproved pre-order)
+        is_unapproved_preorder = found_order.get("is_preorder") and old_status in ["PENDING_APPROVAL", "PENDING"]
+        if not is_unapproved_preorder:
+            products = load_json(PRODUCTS_FILE, default=[])
+            prod_map = {p["id"]: p for p in products}
+            
+            for item in found_order.get("items", []):
+                pid = item.get("product_id")
+                qty = item.get("qty", 1)
+                if pid in prod_map:
+                    prod_map[pid]["stock"] = prod_map[pid].get("stock", 0) + qty
+                    
+            save_json(PRODUCTS_FILE, list(prod_map.values()))
+            
+        # If was on member tab and charged, reverse tab balance
+        if found_order.get("payment_method") == "MEMBER_TAB" and found_order.get("person_id") and found_order.get("payment_status") == "UNPAID_TAB":
             memberships = load_json(MEMBERSHIPS_FILE, default=[])
             for m in memberships:
                 if (m.get("person_id") or "").lower() == found_order.get("person_id", "").lower():
@@ -375,13 +373,175 @@ async def update_order_status(order_id: str, payload: UpdateOrderStatusModel):
                     m["cafe_tab_balance"] = max(0.0, round(cur_tab - found_order.get("total_amount", 0.0), 2))
             save_json(MEMBERSHIPS_FILE, memberships)
             
+        orders[target_idx]["cancelled_by"] = "Staff"
+        orders[target_idx]["cancelled_at"] = now_iso
+
+    if new_status == "READY_FOR_PICKUP":
+        orders[target_idx]["ready_at"] = now_iso
+    elif new_status in ["PICKED_UP", "COMPLETED"]:
+        orders[target_idx]["picked_up_at"] = now_iso
+        orders[target_idx]["completed_at"] = now_iso
+            
     orders[target_idx]["order_status"] = new_status
     if payload.payment_status:
         orders[target_idx]["payment_status"] = payload.payment_status
-    orders[target_idx]["updated_at"] = datetime.now().isoformat()
+    orders[target_idx]["updated_at"] = now_iso
     
     save_json(ORDERS_FILE, orders)
     return {"status": "success", "message": f"Order status updated to {new_status}", "order": orders[target_idx]}
+
+
+@router.post("/orders/{order_id}/cancel")
+async def cancel_order(
+    order_id: str,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role")
+):
+    """
+    Cancel an order with validation:
+    1. Order must exist (404).
+    2. Authenticated user must own the order or have Staff role (403).
+    3. Order must be in cancellable initial status (PENDING_APPROVAL / PENDING).
+       Rejects PREPARING, READY_FOR_PICKUP, COMPLETED, PICKED_UP, CANCELLED, REJECTED (400).
+    4. Auto-restores stock & reverses member tab if applicable.
+    5. Sets cancelled_by ("Customer" or "Staff") and cancelled_at timestamp.
+    """
+    orders = load_json(ORDERS_FILE, default=[])
+    found_order = None
+    target_idx = -1
+    
+    for idx, ord_item in enumerate(orders):
+        if ord_item.get("id") == order_id:
+            found_order = ord_item
+            target_idx = idx
+            break
+            
+    if not found_order:
+        raise HTTPException(status_code=404, detail=f"Order #{order_id} not found")
+        
+    # Check ownership if called by Member
+    is_staff = (x_user_role or "").upper() in ["ADMIN", "MANAGER", "RECEPTIONIST"]
+    if not is_staff and x_user_id:
+        ord_person_id = (found_order.get("person_id") or "").lower()
+        if ord_person_id and ord_person_id != x_user_id.strip().lower():
+            raise HTTPException(status_code=403, detail="Permission Denied: You cannot cancel another customer's order")
+
+    current_status = (found_order.get("order_status") or "").upper()
+    cancellable_statuses = ["PENDING_APPROVAL", "PENDING", "AWAITING_FRONT_DESK", "AWAITING_CONFIRMATION"]
+
+    if current_status == "CANCELLED":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} is already cancelled")
+    elif current_status == "PREPARING":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} cannot be cancelled because kitchen is already preparing it")
+    elif current_status == "READY_FOR_PICKUP":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} cannot be cancelled because it is already prepared and ready for pickup")
+    elif current_status in ["COMPLETED", "PICKED_UP"]:
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} cannot be cancelled because it has already been completed")
+    elif current_status == "REJECTED":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} has already been declined by front desk")
+    elif current_status not in cancellable_statuses:
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} cannot be cancelled in status '{current_status}'")
+
+    now_iso = datetime.now().isoformat()
+
+    # Restore stock if items were already deducted
+    is_unapproved_preorder = found_order.get("is_preorder") and current_status in ["PENDING_APPROVAL", "PENDING"]
+    if not is_unapproved_preorder:
+        products = load_json(PRODUCTS_FILE, default=[])
+        prod_map = {p["id"]: p for p in products}
+        for item in found_order.get("items", []):
+            pid = item.get("product_id")
+            qty = item.get("qty", 1)
+            if pid in prod_map:
+                prod_map[pid]["stock"] = prod_map[pid].get("stock", 0) + qty
+        save_json(PRODUCTS_FILE, list(prod_map.values()))
+
+    # Reverse member tab if tab was charged
+    if found_order.get("payment_method") == "MEMBER_TAB" and found_order.get("person_id") and found_order.get("payment_status") == "UNPAID_TAB":
+        memberships = load_json(MEMBERSHIPS_FILE, default=[])
+        for m in memberships:
+            if (m.get("person_id") or "").lower() == found_order.get("person_id", "").lower():
+                cur_tab = float(m.get("cafe_tab_balance", 0.0))
+                m["cafe_tab_balance"] = max(0.0, round(cur_tab - found_order.get("total_amount", 0.0), 2))
+        save_json(MEMBERSHIPS_FILE, memberships)
+
+    cancelled_by_role = "Staff" if is_staff else "Customer"
+    orders[target_idx]["order_status"] = "CANCELLED"
+    orders[target_idx]["payment_status"] = "CANCELLED"
+    orders[target_idx]["cancelled_by"] = cancelled_by_role
+    orders[target_idx]["cancelled_at"] = now_iso
+    orders[target_idx]["updated_at"] = now_iso
+
+    save_json(ORDERS_FILE, orders)
+    return {
+        "status": "success",
+        "message": f"Order #{order_id} has been cancelled successfully.",
+        "order": orders[target_idx]
+    }
+
+
+@router.post("/orders/{order_id}/pickup")
+async def pickup_order(
+    order_id: str,
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id"),
+    x_user_role: Optional[str] = Header(None, alias="X-User-Role")
+):
+    """
+    Customer or Staff marks order as Picked Up:
+    1. Order must exist (404).
+    2. Authenticated user must own the order or have Staff role (403).
+    3. Order status must be READY_FOR_PICKUP.
+       Rejects PENDING_APPROVAL, PREPARING, CANCELLED, REJECTED, PICKED_UP, COMPLETED (400).
+    4. Sets order_status = PICKED_UP, records picked_up_by and picked_up_at timestamp.
+    """
+    orders = load_json(ORDERS_FILE, default=[])
+    found_order = None
+    target_idx = -1
+    
+    for idx, ord_item in enumerate(orders):
+        if ord_item.get("id") == order_id:
+            found_order = ord_item
+            target_idx = idx
+            break
+            
+    if not found_order:
+        raise HTTPException(status_code=404, detail=f"Order #{order_id} not found")
+        
+    # Check ownership if called by Member
+    is_staff = (x_user_role or "").upper() in ["ADMIN", "MANAGER", "RECEPTIONIST"]
+    if not is_staff and x_user_id:
+        ord_person_id = (found_order.get("person_id") or "").lower()
+        if ord_person_id and ord_person_id != x_user_id.strip().lower():
+            raise HTTPException(status_code=403, detail="Permission Denied: You cannot modify another customer's order")
+
+    current_status = (found_order.get("order_status") or "").upper()
+
+    if current_status in ["PICKED_UP", "COMPLETED"]:
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} has already been picked up/completed")
+    elif current_status in ["CANCELLED", "REJECTED"]:
+        raise HTTPException(status_code=400, detail=f"Cannot pick up a cancelled or declined order")
+    elif current_status in ["PENDING_APPROVAL", "PENDING"]:
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} is awaiting payment & approval, not ready for pickup")
+    elif current_status == "PREPARING":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} is currently being prepared in the kitchen, not ready for pickup yet")
+    elif current_status != "READY_FOR_PICKUP":
+        raise HTTPException(status_code=400, detail=f"Order #{order_id} cannot be marked as picked up from status '{current_status}'")
+
+    now_iso = datetime.now().isoformat()
+    picked_up_by_role = "Staff" if is_staff else "Customer"
+
+    orders[target_idx]["order_status"] = "PICKED_UP"
+    orders[target_idx]["picked_up_by"] = picked_up_by_role
+    orders[target_idx]["picked_up_at"] = now_iso
+    orders[target_idx]["completed_at"] = now_iso
+    orders[target_idx]["updated_at"] = now_iso
+
+    save_json(ORDERS_FILE, orders)
+    return {
+        "status": "success",
+        "message": f"Order #{order_id} marked as picked up.",
+        "order": orders[target_idx]
+    }
 
 
 class MemberPreOrderModel(BaseModel):
@@ -576,7 +736,7 @@ async def get_cafe_analytics():
     }
     
     for ord_item in orders:
-        if ord_item.get("order_status") == "CANCELLED":
+        if ord_item.get("order_status") in ["CANCELLED", "REJECTED"]:
             continue
             
         ord_date = (ord_item.get("created_at") or "")[:10]
@@ -662,23 +822,28 @@ async def get_cafe_analytics():
 @router.get("/members/{person_id}/history")
 async def get_member_cafe_history(person_id: str):
     """
-    Returns specific member's cafe orders, total spending,
-    and nutritional intake (total protein & calories consumed).
+    Returns specific member's cafe orders (including cancelled and picked up),
+    total spending, and nutritional intake (excluding cancelled/rejected).
     """
     orders = load_json(ORDERS_FILE, default=[])
     memberships = load_json(MEMBERSHIPS_FILE, default=[])
     
-    member_orders = [
+    all_member_orders = [
         o for o in orders 
-        if (o.get("person_id") or "").lower() == person_id.lower() 
-        and o.get("order_status") != "CANCELLED"
+        if (o.get("person_id") or "").lower() == person_id.lower()
     ]
     
-    total_spent = sum(float(o.get("total_amount", 0.0)) for o in member_orders)
+    # Calculate spending & nutrition strictly on active/fulfilled orders (not cancelled/rejected)
+    fulfilled_orders = [
+        o for o in all_member_orders
+        if o.get("order_status") not in ["CANCELLED", "REJECTED"]
+    ]
+    
+    total_spent = sum(float(o.get("total_amount", 0.0)) for o in fulfilled_orders)
     total_protein = 0.0
     total_calories = 0
     
-    for o in member_orders:
+    for o in fulfilled_orders:
         for itm in o.get("items", []):
             qty = itm.get("qty", 1)
             total_protein += float(itm.get("protein_g", 0.0)) * qty
@@ -698,8 +863,8 @@ async def get_member_cafe_history(person_id: str):
         "total_protein_g": round(total_protein, 1),
         "total_calories_kcal": total_calories,
         "cafe_tab_balance": round(tab_balance, 2),
-        "orders_count": len(member_orders),
-        "orders": list(reversed(member_orders))
+        "orders_count": len(all_member_orders),
+        "orders": list(reversed(all_member_orders))
     }
 
 
