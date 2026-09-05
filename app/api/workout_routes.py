@@ -115,11 +115,14 @@ def _load_json(file_path: str, default_val: Any) -> Any:
         return default_val
 
 def _save_json(file_path: str, data: Any):
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
-    temp_path = file_path + ".tmp"
-    with open(temp_path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-    os.replace(temp_path, file_path)
+    try:
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        temp_path = file_path + ".tmp"
+        with open(temp_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        os.replace(temp_path, file_path)
+    except Exception as e:
+        pass
 
     coll_name = _get_collection_name(file_path)
     if coll_name and mongo.is_connected():
