@@ -1,23 +1,35 @@
 import sys
 import os
 
-# Configure paths
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, BASE_DIR)
-sys.path.insert(0, os.path.join(BASE_DIR, 'app'))
-sys.path.insert(0, os.path.join(BASE_DIR, 'app', 'api'))
+# Robust absolute path resolution for Vercel Serverless
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = os.path.dirname(CURRENT_DIR)
 
-from fastapi import FastAPI, HTTPException
+for p in [ROOT_DIR, os.path.join(ROOT_DIR, "app"), os.path.join(ROOT_DIR, "app", "api")]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from auth_routes import router as auth_router
-from cafe_routes import router as cafe_router
-from workout_routes import router as workout_router
-from db import mongo
+from mangum import Mangum
 
-# Create clean, cloud-optimized FastAPI app
+try:
+    from auth_routes import router as auth_router
+except Exception:
+    from app.api.auth_routes import router as auth_router
+
+try:
+    from cafe_routes import router as cafe_router
+except Exception:
+    from app.api.cafe_routes import router as cafe_router
+
+try:
+    from workout_routes import router as workout_router
+except Exception:
+    from app.api.workout_routes import router as workout_router
+
 app = FastAPI(title="Titan Gym Cloud API")
 
-# Enable CORS for global access
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -26,26 +38,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount cloud API routers
 app.include_router(auth_router)
 app.include_router(cafe_router)
 app.include_router(workout_router)
 
 @app.get("/api/status")
 async def get_status():
-    return {
-        "status": "online",
-        "service": "Titan Gym Cloud API",
-        "database": "connected" if mongo.is_connected() else "fallback"
-    }
+    return {"status": "online", "mode": "cloud"}
 
-@app.get("/api/people")
-async def get_people():
-    if mongo.is_connected():
-        people = mongo.find_all("persons")
-        if people:
-            return people
-    return []
-
-# Export for Vercel Serverless
-app = app
+# Export both app and Mangum handler for Vercel compatibility
+handler = Mangum(app, lifespan="off")
