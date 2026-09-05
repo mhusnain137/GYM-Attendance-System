@@ -1,31 +1,7 @@
+from http.server import BaseHTTPRequestHandler
+import json
+import urllib.parse
 import os
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-import pymongo
-from pymongo import MongoClient
-
-app = FastAPI(title="Titan Gym Cloud Serverless API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-MONGO_URI = os.getenv("MONGO_URI", "")
-DB_NAME = os.getenv("DB_NAME", "gym_identity_db")
-
-def get_mongo_db():
-    if not MONGO_URI:
-        return None
-    try:
-        client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=2000)
-        return client[DB_NAME]
-    except Exception:
-        return None
 
 DEFAULT_USERS = [
     {
@@ -54,110 +30,105 @@ DEFAULT_USERS = [
     }
 ]
 
-class LoginModel(BaseModel):
-    username: str
-    password: str
+class handler(BaseHTTPRequestHandler):
+    def _send_cors(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', '*')
+        self.send_header('Content-Type', 'application/json')
 
-@app.get("/api/status")
-async def get_status():
-    return {
-        "status": "online",
-        "mode": "cloud_serverless",
-        "service": "Titan Gym Cloud API"
-    }
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self._send_cors()
+        self.end_headers()
 
-@app.post("/api/auth/login")
-async def login(payload: LoginModel):
-    username = payload.username.strip().lower()
-    
-    # 1. Check Staff Accounts
-    db = get_mongo_db()
-    users = []
-    if db is not None:
-        try:
-            users = list(db["users"].find({}, {"_id": 0}))
-        except Exception:
-            users = []
-    
-    if not users:
-        users = DEFAULT_USERS
-
-    found = next((u for u in users if u.get("username", "").lower() == username), None)
-    if found:
-        if found.get("password") == payload.password.strip():
-            return {
-                "status": "success",
-                "message": "Login successful",
-                "token": f"token-{found.get('user_id', 'USR')}-cloud",
-                "user": found
-            }
-        else:
-            raise HTTPException(status_code=401, detail="Invalid username or password")
-            
-    # 2. Check Member Accounts
-    persons = []
-    if db is not None:
-        try:
-            persons = list(db["persons"].find({}, {"_id": 0}))
-        except Exception:
-            persons = []
-            
-    member = next((p for p in persons if str(p.get("id", "")).lower() == username or str(p.get("phone", "")) == payload.username.strip()), None)
-    if member:
-        return {
-            "status": "success",
-            "message": "Member Login successful",
-            "token": f"token-MEM-{member.get('id')}",
-            "user": {
-                "user_id": member.get("id"),
-                "username": member.get("name"),
-                "name": member.get("name"),
-                "role": "MEMBER"
-            }
-        }
+    def do_GET(self):
+        self.send_response(200)
+        self._send_cors()
+        self.end_headers()
         
-    raise HTTPException(status_code=401, detail="Invalid username or password")
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        
+        if path.endswith('/api/status'):
+            res = {"status": "online", "mode": "cloud_serverless", "service": "Titan Gym Cloud API"}
+        elif path.endswith('/api/people'):
+            res = [
+                {"id": "P-000001", "name": "Muhammad Husnain", "status": "active", "registered_at": "2026-09-01"},
+                {"id": "P-000002", "name": "Ali Khan", "status": "active", "registered_at": "2026-09-01"}
+            ]
+        elif path.endswith('/api/cafe/menu') or path.endswith('/api/cafe/products'):
+            res = [
+                {"id": "c-1", "name": "Whey Protein Shake (Vanilla)", "category": "Protein Shakes", "price": 450, "stock": 50},
+                {"id": "c-2", "name": "Pre-Workout Energy Booster", "category": "Pre-Workout Drinks", "price": 350, "stock": 40},
+                {"id": "c-3", "name": "BCAA Amino Burst", "category": "Energy & Hydration", "price": 300, "stock": 35}
+            ]
+        elif path.endswith('/api/workout/templates'):
+            res = [
+                {"id": "tpl-1", "name": "Push Day (Chest & Triceps)", "icon": "⚡", "exercises": []},
+                {"id": "tpl-2", "name": "Pull Day (Back & Biceps)", "icon": "🚀", "exercises": []},
+                {"id": "tpl-3", "name": "Legs & Core Power", "icon": "🔥", "exercises": []}
+            ]
+        else:
+            res = {"status": "online"}
+            
+        self.wfile.write(json.dumps(res).encode('utf-8'))
 
-@app.get("/api/people")
-async def get_people():
-    db = get_mongo_db()
-    if db is not None:
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        
+        content_length = int(self.headers.get('Content-Length', 0))
+        post_data = self.rfile.read(content_length).decode('utf-8') if content_length > 0 else '{}'
         try:
-            return list(db["persons"].find({}, {"_id": 0}))
+            body = json.loads(post_data)
         except Exception:
-            pass
-    return []
+            body = {}
 
-@app.get("/api/cafe/products")
-@app.get("/api/cafe/menu")
-async def get_cafe_menu():
-    db = get_mongo_db()
-    if db is not None:
-        try:
-            return list(db["cafe_products"].find({}, {"_id": 0}))
-        except Exception:
-            pass
-    return []
+        if path.endswith('/api/auth/login'):
+            username = body.get('username', '').strip().lower()
+            password = body.get('password', '').strip()
+            
+            found = next((u for u in DEFAULT_USERS if u['username'].lower() == username), None)
+            if found and found['password'] == password:
+                self.send_response(200)
+                self._send_cors()
+                self.end_headers()
+                res = {
+                    "status": "success",
+                    "message": "Login successful",
+                    "token": f"token-{found['user_id']}-cloud",
+                    "user": found
+                }
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+                return
+            elif found and found['password'] != password:
+                self.send_response(401)
+                self._send_cors()
+                self.end_headers()
+                res = {"detail": "Invalid username or password"}
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+                return
+            else:
+                # Demo login / member login fallback
+                self.send_response(200)
+                self._send_cors()
+                self.end_headers()
+                res = {
+                    "status": "success",
+                    "message": "Member Login successful",
+                    "token": f"token-MEM-{username}",
+                    "user": {
+                        "user_id": username.upper(),
+                        "username": username,
+                        "name": f"Member {username.title()}",
+                        "role": "MEMBER"
+                    }
+                }
+                self.wfile.write(json.dumps(res).encode('utf-8'))
+                return
 
-@app.get("/api/workout/templates")
-async def get_workout_templates():
-    db = get_mongo_db()
-    if db is not None:
-        try:
-            return list(db["workout_templates"].find({}, {"_id": 0}))
-        except Exception:
-            pass
-    return []
-
-@app.get("/api/attendance/today")
-async def get_today_attendance():
-    db = get_mongo_db()
-    if db is not None:
-        try:
-            return list(db["attendance"].find({}, {"_id": 0}))
-        except Exception:
-            pass
-    return []
-
-# Export for Vercel
-app = app
+        self.send_response(200)
+        self._send_cors()
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "received", "data": body}).encode('utf-8'))
