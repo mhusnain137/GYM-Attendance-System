@@ -11,17 +11,35 @@ from typing import Optional, List, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-import cv2
-import numpy as np
+try:
+    import cv2
+except Exception as e:
+    cv2 = None
+    print(f"[Notice] Running in cloud mode without OpenCV: {e}")
+
+try:
+    import numpy as np
+except Exception as e:
+    np = None
+
 import json
 import threading
 import time
 from collections import deque
 import asyncio
 
-# Import recognition components
-import recognition_config
-from recognition_service import RecognitionService
+# Import recognition components safely
+try:
+    import recognition_config
+except Exception as e:
+    recognition_config = None
+
+try:
+    from recognition_service import RecognitionService
+except Exception as e:
+    RecognitionService = None
+    print(f"[Notice] RecognitionService disabled in cloud mode: {e}")
+
 from cafe_routes import router as cafe_router
 from auth_routes import router as auth_router
 from workout_routes import router as workout_router
