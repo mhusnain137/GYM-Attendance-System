@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Login.css';
 import { useAuth } from '../context/AuthContext';
+import { getApiBaseUrl, setApiBaseUrl } from '../utils/apiConfig';
 
 function Login() {
   const { login, loginAsMember } = useAuth();
@@ -16,12 +17,18 @@ function Login() {
   const [memberInput, setMemberInput] = useState('');
   const [peopleList, setPeopleList] = useState([]);
 
+  // Server Settings
+  const isCloudHosted = typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+  const [serverUrl, setServerUrl] = useState(() => getApiBaseUrl() || (isCloudHosted ? '' : 'http://localhost:8000'));
+  const [showServerConfig, setShowServerConfig] = useState(() => isCloudHosted && !getApiBaseUrl());
+  const [serverSavedMsg, setServerSavedMsg] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
     fetchPeople();
-  }, []);
+  }, [serverUrl]);
 
   const fetchPeople = async () => {
     try {
@@ -41,6 +48,15 @@ function Login() {
     }
   };
 
+  const handleSaveServerUrl = (e) => {
+    e?.preventDefault();
+    setApiBaseUrl(serverUrl);
+    axios.defaults.baseURL = serverUrl.trim().replace(/\/+$/, '');
+    setServerSavedMsg('✅ Server URL connected!');
+    setTimeout(() => setServerSavedMsg(''), 3000);
+    fetchPeople();
+  };
+
   const handleStaffSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -48,7 +64,12 @@ function Login() {
     const result = await login(username, password);
     setLoading(false);
     if (!result.success) {
-      setError(result.message || 'Login failed. Please check credentials.');
+      if (result.message && result.message.includes('405')) {
+        setError('405 Error: Frontend is not connected to Gym Backend. Please configure Backend URL below.');
+        setShowServerConfig(true);
+      } else {
+        setError(result.message || 'Login failed. Please check credentials.');
+      }
     }
   };
 
@@ -63,7 +84,12 @@ function Login() {
     const result = await loginAsMember(memberInput);
     setLoading(false);
     if (!result.success) {
-      setError(result.message || 'Member account not found in system.');
+      if (result.message && result.message.includes('405')) {
+        setError('405 Error: Frontend is not connected to Gym Backend. Please configure Backend URL below.');
+        setShowServerConfig(true);
+      } else {
+        setError(result.message || 'Member account not found in system.');
+      }
     }
   };
 
@@ -229,6 +255,93 @@ function Login() {
             )}
           </form>
         )}
+
+        {/* Server Connection Bar */}
+        <div style={{
+          marginTop: '1.25rem',
+          paddingTop: '1rem',
+          borderTop: '1px solid var(--border-color, #334155)',
+          fontSize: '0.85rem'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ color: 'var(--c-slate-light, #94a3b8)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: serverUrl || !isCloudHosted ? '#10b981' : '#f59e0b',
+                display: 'inline-block'
+              }}></span>
+              Backend: {getApiBaseUrl() || (isCloudHosted ? 'Cloud Default' : 'http://localhost:8000')}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowServerConfig(!showServerConfig)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--c-brand-cyan, #06b6d4)',
+                cursor: 'pointer',
+                fontSize: '0.8rem',
+                textDecoration: 'underline'
+              }}
+            >
+              {showServerConfig ? 'Hide Config' : '⚙️ Server URL'}
+            </button>
+          </div>
+
+          {showServerConfig && (
+            <div style={{
+              marginTop: '0.75rem',
+              padding: '0.75rem',
+              background: 'rgba(15, 23, 42, 0.6)',
+              borderRadius: '8px',
+              border: '1px solid #334155'
+            }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', color: '#94a3b8', marginBottom: '4px' }}>
+                Backend API Server URL (e.g. Tunnel URL or Local URL):
+              </label>
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <input
+                  type="text"
+                  placeholder="e.g. https://your-tunnel.trycloudflare.com or http://localhost:8000"
+                  value={serverUrl}
+                  onChange={(e) => setServerUrl(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #475569',
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    fontSize: '0.8rem'
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveServerUrl}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: 'var(--c-brand-cyan, #06b6d4)',
+                    color: '#0f172a',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    fontSize: '0.8rem'
+                  }}
+                >
+                  Save
+                </button>
+              </div>
+              {serverSavedMsg && (
+                <div style={{ color: '#10b981', fontSize: '0.75rem', marginTop: '4px' }}>
+                  {serverSavedMsg}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
