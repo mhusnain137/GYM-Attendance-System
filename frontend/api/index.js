@@ -16,6 +16,7 @@ export default function handler(req, res) {
   const url = req.url || '';
   const method = req.method;
 
+  // In-Memory Database Snapshots from Local System
   const REGISTERED_PEOPLE = [
   {
     "id": "P-000002",
@@ -130,7 +131,6 @@ export default function handler(req, res) {
     "registered_at": "2026-08-29 17:11:22"
   }
 ];
-
   const MEMBERSHIPS = [
   {
     "membership_id": "M-000003",
@@ -186,8 +186,1800 @@ export default function handler(req, res) {
     "freeze_reason": "N/a"
   }
 ];
-
+  const MEMBERSHIP_PLANS = [
+  {
+    "plan_id": "daily",
+    "name": "Daily Pass",
+    "duration": 1,
+    "duration_unit": "day",
+    "price": 300.0,
+    "description": "1 Day Gym Access Pass"
+  },
+  {
+    "plan_id": "weekly",
+    "name": "Weekly Pass",
+    "duration": 7,
+    "duration_unit": "day",
+    "price": 1500.0,
+    "description": "7 Days Full Access Pass"
+  },
+  {
+    "plan_id": "monthly",
+    "name": "Monthly Standard",
+    "duration": 1,
+    "duration_unit": "month",
+    "price": 5000.0,
+    "description": "Standard 30-Day Gym Membership"
+  },
+  {
+    "plan_id": "3months",
+    "name": "3 Months (Quarterly)",
+    "duration": 3,
+    "duration_unit": "month",
+    "price": 13500.0,
+    "description": "Quarterly Gym Membership (Save 10%)"
+  },
+  {
+    "plan_id": "6months",
+    "name": "6 Months (Half-Yearly)",
+    "duration": 6,
+    "duration_unit": "month",
+    "price": 25000.0,
+    "description": "Half-Year Gym Membership (Save Rs 5,000)"
+  },
+  {
+    "plan_id": "yearly",
+    "name": "1 Year VIP Annual",
+    "duration": 1,
+    "duration_unit": "year",
+    "price": 45000.0,
+    "description": "VIP Full Year Gym Access (Save Rs 15,000)"
+  }
+];
+  const CAFE_PRODUCTS = [
+  {
+    "id": "PROD-101",
+    "name": "Double Whey Isolate Shake",
+    "category": "SHAKES",
+    "price": 450,
+    "cost_price": 280,
+    "calories": 210,
+    "protein_g": 32,
+    "stock": 29,
+    "min_stock_alert": 5,
+    "is_active": true,
+    "description": "Pure whey isolate blended with chilled skim milk or water.",
+    "customizable": true
+  },
+  {
+    "id": "PROD-102",
+    "name": "Peanut Butter Mass Gainer",
+    "category": "SHAKES",
+    "price": 550,
+    "cost_price": 340,
+    "calories": 650,
+    "protein_g": 45,
+    "stock": 25,
+    "min_stock_alert": 5,
+    "is_active": true,
+    "description": "Heavy mass gainer with banana, natural peanut butter, and oats.",
+    "customizable": true
+  },
+  {
+    "id": "PROD-103",
+    "name": "Vegan Green Detox Smoothie",
+    "category": "SHAKES",
+    "price": 400,
+    "cost_price": 230,
+    "calories": 180,
+    "protein_g": 22,
+    "stock": 18,
+    "min_stock_alert": 4,
+    "is_active": true,
+    "description": "Plant-based pea protein with spinach, green apple, and almond milk.",
+    "customizable": true
+  },
+  {
+    "id": "PROD-104",
+    "name": "C4 Pre-Workout Blast",
+    "category": "PRE_WORKOUT",
+    "price": 250,
+    "cost_price": 140,
+    "calories": 10,
+    "protein_g": 0,
+    "stock": 41,
+    "min_stock_alert": 8,
+    "is_active": true,
+    "description": "High energy explosive pre-workout drink with Beta-Alanine and Caffeine.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-105",
+    "name": "BCAA Recovery Slush",
+    "category": "PRE_WORKOUT",
+    "price": 220,
+    "cost_price": 120,
+    "calories": 15,
+    "protein_g": 7,
+    "stock": 28,
+    "min_stock_alert": 5,
+    "is_active": true,
+    "description": "2:1:1 Amino acids ice slush for intra-workout hydration.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-106",
+    "name": "Creatine Monohydrate Scoop",
+    "category": "SUPPLEMENTS",
+    "price": 120,
+    "cost_price": 60,
+    "calories": 0,
+    "protein_g": 0,
+    "stock": 50,
+    "min_stock_alert": 10,
+    "is_active": true,
+    "description": "5g Micronized pure German creatine scoop.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-107",
+    "name": "Chocolate Chip Protein Bar",
+    "category": "SNACKS",
+    "price": 320.0,
+    "cost_price": 210.0,
+    "calories": 240,
+    "protein_g": 20.0,
+    "stock": 10,
+    "min_stock_alert": 5,
+    "is_active": true,
+    "description": "Low sugar, chewy baked whey protein bar.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-108",
+    "name": "Grilled Chicken & Brown Rice",
+    "category": "MEALS",
+    "price": 550,
+    "cost_price": 360,
+    "calories": 480,
+    "protein_g": 42,
+    "stock": 8,
+    "min_stock_alert": 3,
+    "is_active": true,
+    "description": "200g tender breast fillets with seasoned brown rice & steamed veggies.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-109",
+    "name": "Boiled Eggs Plate (4 Eggs)",
+    "category": "MEALS",
+    "price": 200,
+    "cost_price": 120,
+    "calories": 280,
+    "protein_g": 24,
+    "stock": 15,
+    "min_stock_alert": 5,
+    "is_active": true,
+    "description": "Fresh farm boiled eggs served with black pepper and pink salt.",
+    "customizable": false
+  },
+  {
+    "id": "PROD-110",
+    "name": "Electrolyte Mineral Water (500ml)",
+    "category": "HYDRATION",
+    "price": 80,
+    "cost_price": 40,
+    "calories": 0,
+    "protein_g": 0,
+    "stock": 60,
+    "min_stock_alert": 10,
+    "is_active": true,
+    "description": "Chilled alkaline mineral water with essential salts.",
+    "customizable": false
+  }
+];
+  const CAFE_ORDERS = [
+  {
+    "id": "ORD-260901-B10F",
+    "person_id": "P-000002",
+    "customer_name": "Ahsan",
+    "customer_phone": "",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 570.0,
+        "calories": 210,
+        "protein_g": 32.0,
+        "addons": [
+          "+1 Scoop Creatine (5g)"
+        ],
+        "item_total": 570.0
+      }
+    ],
+    "subtotal": 570.0,
+    "discount": 0.0,
+    "total_amount": 570.0,
+    "payment_method": "CASH",
+    "payment_status": "PAID",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Front Desk Staff",
+    "created_at": "2026-09-01T17:01:02.740640"
+  },
+  {
+    "id": "ORD-260901-58F3",
+    "person_id": "P-000010",
+    "customer_name": "Husnain",
+    "customer_phone": "",
+    "items": [
+      {
+        "product_id": "PROD-104",
+        "name": "C4 Pre-Workout Blast",
+        "qty": 1,
+        "unit_price": 250.0,
+        "calories": 10,
+        "protein_g": 0.0,
+        "addons": [],
+        "item_total": 250.0
+      }
+    ],
+    "subtotal": 250.0,
+    "discount": 0.0,
+    "total_amount": 250.0,
+    "payment_method": "CASH",
+    "payment_status": "PAID",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Front Desk Staff",
+    "created_at": "2026-09-01T17:03:55.020394"
+  },
+  {
+    "id": "ORD-260901-3FE0",
+    "person_id": "P-000006",
+    "customer_name": "Furqan",
+    "customer_phone": "",
+    "items": [
+      {
+        "product_id": "PROD-105",
+        "name": "BCAA Recovery Slush",
+        "qty": 1,
+        "unit_price": 220.0,
+        "calories": 15,
+        "protein_g": 7.0,
+        "addons": [],
+        "item_total": 220.0
+      }
+    ],
+    "subtotal": 220.0,
+    "discount": 0.0,
+    "total_amount": 220.0,
+    "payment_method": "MEMBER_TAB",
+    "payment_status": "UNPAID_TAB",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Front Desk Staff",
+    "created_at": "2026-09-01T17:36:50.862410"
+  },
+  {
+    "id": "ORD-260901-F9E6",
+    "person_id": "P-000002",
+    "customer_name": "Test Member",
+    "customer_phone": "03001234567",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 500.0,
+        "calories": 310,
+        "protein_g": 36.0,
+        "addons": [
+          "Base: Whole Milk (+Rs. 50)",
+          "+1 Spoon Peanut Butter"
+        ],
+        "item_total": 500.0
+      }
+    ],
+    "subtotal": 500.0,
+    "discount": 0.0,
+    "total_amount": 500.0,
+    "payment_method": "MEMBER_TAB",
+    "payment_status": "UNPAID_TAB",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Reception Counter",
+    "created_at": "2026-09-01T18:06:21.624373",
+    "updated_at": "2026-09-01T18:06:25.778581"
+  },
+  {
+    "id": "ORD-260901-6BDD",
+    "person_id": "P-000002",
+    "customer_name": "Test Member",
+    "customer_phone": "03001234567",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 500.0,
+        "calories": 310,
+        "protein_g": 36.0,
+        "addons": [
+          "Base: Whole Milk (+Rs. 50)",
+          "+1 Spoon Peanut Butter"
+        ],
+        "item_total": 500.0
+      }
+    ],
+    "subtotal": 500.0,
+    "discount": 0.0,
+    "total_amount": 500.0,
+    "payment_method": "MEMBER_TAB",
+    "payment_status": "UNPAID_TAB",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Reception Counter",
+    "created_at": "2026-09-01T18:11:20.820639",
+    "updated_at": "2026-09-01T18:28:08.169231"
+  },
+  {
+    "id": "ORD-260901-B954",
+    "person_id": "P-000002",
+    "customer_name": "Test Member",
+    "customer_phone": "03001234567",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 500.0,
+        "calories": 310,
+        "protein_g": 36.0,
+        "addons": [
+          "Base: Whole Milk (+Rs. 50)",
+          "+1 Spoon Peanut Butter"
+        ],
+        "item_total": 500.0
+      }
+    ],
+    "subtotal": 500.0,
+    "discount": 0.0,
+    "total_amount": 500.0,
+    "payment_method": "MEMBER_TAB",
+    "payment_status": "UNPAID_TAB",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Reception Counter",
+    "created_at": "2026-09-01T18:11:51.840371",
+    "updated_at": "2026-09-01T18:11:56.007169"
+  },
+  {
+    "id": "ORD-260901-3220",
+    "person_id": "P-000002",
+    "customer_name": "Ahsan (Member)",
+    "customer_phone": "03009998877",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 490.0,
+        "calories": 260,
+        "protein_g": 36.0,
+        "addons": [
+          "Base: Skim Milk (+Rs. 40)"
+        ],
+        "item_total": 490.0
+      }
+    ],
+    "subtotal": 490.0,
+    "discount": 0.0,
+    "total_amount": 490.0,
+    "payment_method": "CASH",
+    "payment_status": "PAID",
+    "order_status": "PICKED_UP",
+    "is_preorder": true,
+    "notes": "Pre-order for post-workout pickup",
+    "served_by": "Customer Portal",
+    "created_at": "2026-09-01T18:20:11.617498",
+    "approved_by": "Sara Receptionist",
+    "approved_at": "2026-09-01T18:20:17.774540",
+    "updated_at": "2026-09-02T19:07:27.080068",
+    "picked_up_by": "Customer",
+    "picked_up_at": "2026-09-02T19:07:27.080068",
+    "completed_at": "2026-09-02T19:07:27.080068"
+  },
+  {
+    "id": "ORD-260901-5E21",
+    "person_id": "P-000002",
+    "customer_name": "Test Member",
+    "customer_phone": "03001234567",
+    "items": [
+      {
+        "product_id": "PROD-101",
+        "name": "Double Whey Isolate Shake",
+        "qty": 1,
+        "unit_price": 500.0,
+        "calories": 310,
+        "protein_g": 36.0,
+        "addons": [
+          "Base: Whole Milk (+Rs. 50)",
+          "+1 Spoon Peanut Butter"
+        ],
+        "item_total": 500.0
+      }
+    ],
+    "subtotal": 500.0,
+    "discount": 0.0,
+    "total_amount": 500.0,
+    "payment_method": "MEMBER_TAB",
+    "payment_status": "UNPAID_TAB",
+    "order_status": "COMPLETED",
+    "notes": "",
+    "served_by": "Reception Counter",
+    "created_at": "2026-09-01T18:24:22.819095",
+    "updated_at": "2026-09-01T18:24:26.957387"
+  },
+  {
+    "id": "ORD-260901-91F1",
+    "person_id": "P-000002",
+    "customer_name": "Ahsan",
+    "customer_phone": "",
+    "items": [
+      {
+        "product_id": "PROD-105",
+        "name": "BCAA Recovery Slush",
+        "qty": 1,
+        "unit_price": 220.0,
+        "calories": 15,
+        "protein_g": 7.0,
+        "addons": [],
+        "item_total": 220.0
+      }
+    ],
+    "subtotal": 220.0,
+    "discount": 0.0,
+    "total_amount": 220.0,
+    "payment_method": "CASH",
+    "payment_status": "PAID",
+    "order_status": "COMPLETED",
+    "is_preorder": true,
+    "notes": "Pre-ordered via Member Portal (Pay at Counter)",
+    "served_by": "Customer Portal",
+    "created_at": "2026-09-01T18:26:12.252758",
+    "approved_by": "Reception Staff",
+    "approved_at": "2026-09-01T18:28:10.829433",
+    "updated_at": "2026-09-01T18:28:29.142377"
+  }
+];
+  const WORKOUT_TEMPLATES = {
+  "P-000002": [
+    {
+      "id": "tpl-ef3c349d",
+      "name": "UPPER BODY",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "updated_at": "2026-09-02T18:08:17.250510",
+      "exercises": [
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 2,
+          "target_reps": "8-10",
+          "notes": ""
+        },
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": ""
+        },
+        {
+          "name": "Flat Dumbbell Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": ""
+        }
+      ],
+      "created_at": "2026-09-02T18:06:47.578415"
+    },
+    {
+      "id": "tpl-7fc88bc8",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T18:06:47.578526",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-7ea3e034",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T18:06:47.578566",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-0abcd5eb",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T18:06:47.578624",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ],
+  "USR-001": [
+    {
+      "id": "tpl-679355b8",
+      "name": "Push Day (Chest, Shoulders, Triceps)",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "created_at": "2026-09-02T18:23:23.977368",
+      "exercises": [
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Focus on upper pec stretch"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Heavy compound pressing"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Control the descent"
+        },
+        {
+          "name": "Standing Lateral Dumbbell Raises",
+          "category": "Shoulders",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Strict form, no swinging"
+        },
+        {
+          "name": "Rope Cable Triceps Pushdown",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Lock out and squeeze triceps"
+        }
+      ]
+    },
+    {
+      "id": "tpl-df4c2b84",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T18:23:23.977428",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-25016f9b",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T18:23:23.977451",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-69c2e290",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T18:23:23.977502",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ],
+  "P-000005": [
+    {
+      "id": "tpl-7e83d88f",
+      "name": "Push Day (Chest, Shoulders, Triceps)",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "created_at": "2026-09-02T18:28:02.567027",
+      "exercises": [
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Focus on upper pec stretch"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Heavy compound pressing"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Control the descent"
+        },
+        {
+          "name": "Standing Lateral Dumbbell Raises",
+          "category": "Shoulders",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Strict form, no swinging"
+        },
+        {
+          "name": "Rope Cable Triceps Pushdown",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Lock out and squeeze triceps"
+        }
+      ]
+    },
+    {
+      "id": "tpl-f22f0332",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T18:28:02.567065",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-873aa589",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T18:28:02.567086",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-3c957bd1",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T18:28:02.567113",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ],
+  "P-000016": [
+    {
+      "id": "tpl-c90fafb6",
+      "name": "Push Day (Chest, Shoulders, Triceps)",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "created_at": "2026-09-02T18:28:08.289235",
+      "exercises": [
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Focus on upper pec stretch"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Heavy compound pressing"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Control the descent"
+        },
+        {
+          "name": "Standing Lateral Dumbbell Raises",
+          "category": "Shoulders",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Strict form, no swinging"
+        },
+        {
+          "name": "Rope Cable Triceps Pushdown",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Lock out and squeeze triceps"
+        }
+      ]
+    },
+    {
+      "id": "tpl-83f58a83",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T18:28:08.289290",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-69582b8b",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T18:28:08.289326",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-ce123382",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T18:28:08.289362",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ],
+  "P-000003": [
+    {
+      "id": "tpl-c04c941d",
+      "name": "Push Day (Chest, Shoulders, Triceps)",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "created_at": "2026-09-02T18:29:18.371535",
+      "exercises": [
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Focus on upper pec stretch"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Heavy compound pressing"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Control the descent"
+        },
+        {
+          "name": "Standing Lateral Dumbbell Raises",
+          "category": "Shoulders",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Strict form, no swinging"
+        },
+        {
+          "name": "Rope Cable Triceps Pushdown",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Lock out and squeeze triceps"
+        }
+      ]
+    },
+    {
+      "id": "tpl-f9c90558",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T18:29:18.371620",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-32a58117",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T18:29:18.371656",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-5c62e415",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T18:29:18.371696",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ],
+  "P-000011": [
+    {
+      "id": "tpl-16949243",
+      "name": "Push Day (Chest, Shoulders, Triceps)",
+      "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+      "target_muscle": "Chest, Shoulders & Triceps",
+      "icon": "\u26a1",
+      "created_at": "2026-09-02T19:09:07.422311",
+      "exercises": [
+        {
+          "name": "Incline Dumbbell Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Focus on upper pec stretch"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Heavy compound pressing"
+        },
+        {
+          "name": "Seated Dumbbell Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Control the descent"
+        },
+        {
+          "name": "Standing Lateral Dumbbell Raises",
+          "category": "Shoulders",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Strict form, no swinging"
+        },
+        {
+          "name": "Rope Cable Triceps Pushdown",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "12-15",
+          "notes": "Lock out and squeeze triceps"
+        }
+      ]
+    },
+    {
+      "id": "tpl-024deee4",
+      "name": "Pull Day (Back & Biceps)",
+      "description": "Lats width, upper back thickness, and bicep growth.",
+      "target_muscle": "Back, Lats & Biceps",
+      "icon": "\ud83d\ude80",
+      "created_at": "2026-09-02T19:09:07.422348",
+      "exercises": [
+        {
+          "name": "Lat Pulldown (Wide Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Pull with elbows to clavicle"
+        },
+        {
+          "name": "Seated Cable Row (Close Grip)",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Squeeze shoulder blades together"
+        },
+        {
+          "name": "Single-Arm Dumbbell Row",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "10-12",
+          "notes": "Full stretch at bottom"
+        },
+        {
+          "name": "Face Pulls",
+          "category": "Back",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Target rear delts and rotators"
+        },
+        {
+          "name": "EZ-Bar Standing Bicep Curls",
+          "category": "Arms",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Keep elbows pinned at sides"
+        },
+        {
+          "name": "Dumbbell Hammer Curls",
+          "category": "Arms",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "Brachialis and grip strength"
+        }
+      ]
+    },
+    {
+      "id": "tpl-95b7b1e1",
+      "name": "Legs & Lower Body Power",
+      "description": "Quads, hamstrings, glutes and calves strength development.",
+      "target_muscle": "Quads, Hamstrings & Glutes",
+      "icon": "\ud83e\uddb5",
+      "created_at": "2026-09-02T19:09:07.422368",
+      "exercises": [
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "8-10",
+          "notes": "Hit parallel depth"
+        },
+        {
+          "name": "Leg Press 45\u00b0",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Do not lock knees at top"
+        },
+        {
+          "name": "Romanian Deadlift (RDL)",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "10-12",
+          "notes": "Feel deep hamstring stretch"
+        },
+        {
+          "name": "Seated Leg Extension Machine",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "12-15",
+          "notes": "1 second hold at peak"
+        },
+        {
+          "name": "Standing Calf Raises",
+          "category": "Legs",
+          "target_sets": 4,
+          "target_reps": "15-20",
+          "notes": "Full plantar extension"
+        }
+      ]
+    },
+    {
+      "id": "tpl-b96a6097",
+      "name": "Full Body Conditioning",
+      "description": "High-efficiency compound workout targeting total body strength.",
+      "target_muscle": "Total Body & Core",
+      "icon": "\ud83d\udca5",
+      "created_at": "2026-09-02T19:09:07.422385",
+      "exercises": [
+        {
+          "name": "Conventional Deadlift",
+          "category": "Back",
+          "target_sets": 3,
+          "target_reps": "6-8",
+          "notes": "Brace core tight"
+        },
+        {
+          "name": "Barbell Flat Bench Press",
+          "category": "Chest",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Controlled pressing"
+        },
+        {
+          "name": "Barbell Back Squats",
+          "category": "Legs",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Solid compound depth"
+        },
+        {
+          "name": "Overhead Shoulder Press",
+          "category": "Shoulders",
+          "target_sets": 3,
+          "target_reps": "8-10",
+          "notes": "Strict overhead lock"
+        },
+        {
+          "name": "Hanging Knee / Leg Raises",
+          "category": "Core",
+          "target_sets": 3,
+          "target_reps": "15-20",
+          "notes": "Control hip swing"
+        }
+      ]
+    }
+  ]
+};
+  const WORKOUT_LOGS = [
+  {
+    "id": "wlog-260902180924-a828",
+    "member_id": "P-000002",
+    "template_id": "tpl-ef3c349d",
+    "template_name": "UPPER BODY",
+    "date": "2026-09-02",
+    "timestamp": "2026-09-02T18:09:24.106722",
+    "duration_minutes": 45,
+    "notes": "",
+    "total_volume_kg": 800.0,
+    "total_sets": 2,
+    "total_reps": 20,
+    "exercises_count": 3,
+    "exercises": [
+      {
+        "name": "Barbell Flat Bench Press",
+        "category": "Chest",
+        "notes": "",
+        "sets": [
+          {
+            "set_num": 1,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": true
+          },
+          {
+            "set_num": 2,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": true
+          }
+        ],
+        "total_volume_kg": 800.0
+      },
+      {
+        "name": "Incline Dumbbell Bench Press",
+        "category": "Chest",
+        "notes": "",
+        "sets": [
+          {
+            "set_num": 1,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          },
+          {
+            "set_num": 2,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          },
+          {
+            "set_num": 3,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          }
+        ],
+        "total_volume_kg": 0.0
+      },
+      {
+        "name": "Flat Dumbbell Press",
+        "category": "Chest",
+        "notes": "",
+        "sets": [
+          {
+            "set_num": 1,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          },
+          {
+            "set_num": 2,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          },
+          {
+            "set_num": 3,
+            "weight_kg": 40.0,
+            "reps": 10,
+            "is_completed": false
+          }
+        ],
+        "total_volume_kg": 0.0
+      }
+    ]
+  }
+];
+  const PAYMENTS = [
+  {
+    "payment_id": "PAY-000001",
+    "membership_id": "M-000004",
+    "amount": 5000.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-22",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-22T19:21:41.625697"
+  },
+  {
+    "payment_id": "PAY-000002",
+    "membership_id": "M-000004",
+    "amount": 5000.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:05.475992"
+  },
+  {
+    "payment_id": "PAY-000003",
+    "membership_id": "M-000004",
+    "amount": 300.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:14.802140"
+  },
+  {
+    "payment_id": "PAY-000004",
+    "membership_id": "M-000004",
+    "amount": 300.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:28.288519"
+  }
+];
   const ATTENDANCE = [
+  {
+    "date": "2026-08-17",
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "status": "Present",
+    "first_detected": "18:36:38"
+  },
+  {
+    "date": "2026-08-17",
+    "person_id": "P-000009",
+    "name": "Usman Bhai",
+    "status": "Present",
+    "first_detected": "18:54:12"
+  },
+  {
+    "date": "2026-08-17",
+    "person_id": "P-000004",
+    "name": "Abdul Hannan",
+    "status": "Present",
+    "first_detected": "18:54:46"
+  },
+  {
+    "date": "2026-08-17",
+    "person_id": "P-000013",
+    "name": "Sir Saleem",
+    "status": "Present",
+    "first_detected": "20:34:13",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "date": "2026-08-17",
+    "person_id": "P-000011",
+    "name": "Ahmad Saeed",
+    "status": "Present",
+    "first_detected": "20:42:45",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "date": "2026-08-18",
+    "person_id": "P-000011",
+    "name": "Ahmad Saeed",
+    "status": "Present",
+    "first_detected": "16:52:55",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "date": "2026-08-18",
+    "person_id": "P-000013",
+    "name": "Sir Saleem",
+    "status": "Present",
+    "first_detected": "16:58:22",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "date": "2026-08-18",
+    "person_id": "P-000003",
+    "name": "Jawad",
+    "status": "Present",
+    "first_detected": "16:58:26",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
   {
     "date": "2026-08-18",
     "person_id": "P-000009",
@@ -414,8 +2206,263 @@ export default function handler(req, res) {
     "camera_name": "Webcam"
   }
 ];
-
   const VISITS = [
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-22",
+    "time": "18:17:08",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000011",
+    "name": "Ahmad Saeed",
+    "date": "2026-08-22",
+    "time": "18:17:12",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000003",
+    "name": "Jawad",
+    "date": "2026-08-22",
+    "time": "18:17:15",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000005",
+    "name": "Hassaan",
+    "date": "2026-08-22",
+    "time": "18:25:59",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000004",
+    "name": "Abdul Hannan",
+    "date": "2026-08-22",
+    "time": "18:26:05",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000005",
+    "name": "Hassaan",
+    "date": "2026-08-22",
+    "time": "18:50:10",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "17:43:33",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000012",
+    "name": "Ahmad Riaz",
+    "date": "2026-08-25",
+    "time": "17:43:45",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "17:53:45",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000005",
+    "name": "Hassaan",
+    "date": "2026-08-25",
+    "time": "17:53:51",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000012",
+    "name": "Ahmad Riaz",
+    "date": "2026-08-25",
+    "time": "17:53:55",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "17:53:57",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "17:54:24",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000012",
+    "name": "Ahmad Riaz",
+    "date": "2026-08-25",
+    "time": "17:54:27",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "17:56:54",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "18:01:27",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000012",
+    "name": "Ahmad Riaz",
+    "date": "2026-08-25",
+    "time": "18:01:27",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000012",
+    "name": "Ahmad Riaz",
+    "date": "2026-08-25",
+    "time": "18:01:53",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000016",
+    "name": "Junaid",
+    "date": "2026-08-25",
+    "time": "18:03:06",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "18:03:09",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000010",
+    "name": "Husnain",
+    "date": "2026-08-25",
+    "time": "18:04:28",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000016",
+    "name": "Junaid",
+    "date": "2026-08-25",
+    "time": "18:04:30",
+    "camera_source": "webcam",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000016",
+    "name": "Junaid",
+    "date": "2026-08-25",
+    "time": "18:48:42",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000017",
+    "name": "Sir Saleem",
+    "date": "2026-08-25",
+    "time": "18:48:43",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000018",
+    "name": "Visitor #18",
+    "date": "2026-08-25",
+    "time": "18:48:45",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000017",
+    "name": "Sir Saleem",
+    "date": "2026-08-25",
+    "time": "19:22:18",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000018",
+    "name": "Visitor #18",
+    "date": "2026-08-25",
+    "time": "19:35:56",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000019",
+    "name": "Husnain Sarwar",
+    "date": "2026-08-25",
+    "time": "19:37:17",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000019",
+    "name": "Husnain Sarwar",
+    "date": "2026-08-25",
+    "time": "19:38:41",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000020",
+    "name": "Ahmad bin saeed",
+    "date": "2026-08-25",
+    "time": "19:48:56",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000020",
+    "name": "Ahmad bin saeed",
+    "date": "2026-08-25",
+    "time": "19:49:23",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
+  {
+    "person_id": "P-000020",
+    "name": "Ahmad bin saeed",
+    "date": "2026-08-25",
+    "time": "19:50:24",
+    "camera_source": "rtsp",
+    "camera_name": "Webcam"
+  },
   {
     "person_id": "P-000021",
     "name": "SIr Imran",
@@ -617,7 +2664,6 @@ export default function handler(req, res) {
     "camera_name": "Webcam"
   }
 ];
-
   const USERS = [
   {
     "user_id": "USR-001",
@@ -649,7 +2695,7 @@ export default function handler(req, res) {
 ];
 
   // 1. Health & System Status
-  if (url.includes('/status') && !url.includes('/camera/status')) {
+  if (url.includes('/status') && !url.includes('/camera/status') && !url.includes('/order')) {
     return res.status(200).json({
       status: 'online',
       camera: false,
@@ -673,14 +2719,14 @@ export default function handler(req, res) {
     });
   }
 
-  if (url.includes('/camera/source') || url.includes('/camera/start') || url.includes('/camera/stop')) {
+  if (url.includes('/camera/source') || url.includes('/camera/start') || url.includes('/camera/stop') || url.includes('/register/')) {
     return res.status(200).json({
       success: true,
-      message: 'Camera setting updated'
+      message: 'Camera action completed successfully'
     });
   }
 
-  // 3. State Endpoint (Real-time polling)
+  // 3. State Endpoint (Real-time Live Feed)
   if (url.includes('/state')) {
     return res.status(200).json({
       camera: false,
@@ -700,7 +2746,7 @@ export default function handler(req, res) {
   }
 
   // 4. Analytics Dashboard
-  if (url.includes('/analytics/dashboard') || url.includes('/analytics')) {
+  if (url.includes('/analytics/dashboard') || url === '/api/analytics') {
     return res.status(200).json({
       monthly_revenue: [
         { month: '2026-04', label: 'Apr 2026', revenue: 120000, transactions: 24 },
@@ -731,8 +2777,8 @@ export default function handler(req, res) {
     });
   }
 
-  // 5. Authentication / Login
-  if (url.includes('/auth/login') || url.includes('/login')) {
+  // 5. Authentication & Staff Management
+  if (url.includes('/auth/login') || url === '/api/login') {
     if (method === 'POST') {
       const { username, password } = req.body || {};
       const cleanUser = (username || '').trim().toLowerCase();
@@ -768,54 +2814,144 @@ export default function handler(req, res) {
     }
   }
 
-  // 6. People / Members List
+  if (url.includes('/auth/users') || url.includes('/staff')) {
+    if (method === 'POST') {
+      const newUser = {
+        user_id: `USR-${Date.now()}`,
+        ...(req.body || {}),
+        is_active: true
+      };
+      return res.status(201).json({ status: 'success', user: newUser });
+    }
+    return res.status(200).json({ users: USERS });
+  }
+
+  // 6. People / Members Directory
   if (url.includes('/people')) {
+    if (url.includes('/profile') || url.includes('/face-samples')) {
+      return res.status(200).json([]);
+    }
     return res.status(200).json(REGISTERED_PEOPLE);
   }
 
-  // 7. Attendance Today & Visits
-  if (url.includes('/attendance/today') || url.includes('/attendance')) {
+  // 7. Attendance & Visits
+  if (url.includes('/attendance')) {
+    if (url.includes('/today')) {
+      return res.status(200).json(ATTENDANCE.slice(-10).reverse());
+    }
     return res.status(200).json(ATTENDANCE);
   }
 
-  if (url.includes('/visits/today') || url.includes('/visits')) {
+  if (url.includes('/visits')) {
+    if (url.includes('/today')) {
+      return res.status(200).json(VISITS.slice(-10).reverse());
+    }
     return res.status(200).json(VISITS);
   }
 
-  // 8. Memberships
+  // 8. Memberships & Plans
+  if (url.includes('/memberships/plans') || url.includes('/membership_plans')) {
+    return res.status(200).json(MEMBERSHIP_PLANS.length ? MEMBERSHIP_PLANS : [
+      { plan_id: 'daily', name: 'Daily Pass', duration: 1, duration_unit: 'day', price: 300 },
+      { plan_id: 'weekly', name: 'Weekly Pass', duration: 7, duration_unit: 'day', price: 1500 },
+      { plan_id: 'monthly', name: 'Monthly Standard', duration: 1, duration_unit: 'month', price: 5000 },
+      { plan_id: '3months', name: '3 Months (Quarterly)', duration: 3, duration_unit: 'month', price: 13500 },
+      { plan_id: '6months', name: '6 Months (Half-Yearly)', duration: 6, duration_unit: 'month', price: 25000 },
+      { plan_id: 'yearly', name: '1 Year VIP Annual', duration: 1, duration_unit: 'year', price: 45000 }
+    ]);
+  }
+
+  if (url.includes('/memberships/summary')) {
+    return res.status(200).json({
+      total_memberships: MEMBERSHIPS.length,
+      active_memberships: MEMBERSHIPS.filter(m => m.status === 'ACTIVE').length,
+      expiring_soon: 1,
+      expired_memberships: 0,
+      total_revenue: 15000
+    });
+  }
+
+  if (url.includes('/memberships/payments')) {
+    return res.status(200).json(PAYMENTS);
+  }
+
   if (url.includes('/memberships')) {
     return res.status(200).json(MEMBERSHIPS);
   }
 
-  // 9. Staff Users
-  if (url.includes('/staff') || url.includes('/users')) {
-    return res.status(200).json(USERS);
+  // 9. Cafe Products, Orders & Analytics
+  if (url.includes('/cafe/products')) {
+    return res.status(200).json(CAFE_PRODUCTS);
   }
 
-  // 10. Activity Logs
-  if (url.includes('/activity')) {
-    return res.status(200).json([
-      { id: 1, action: 'User Login', user: 'admin', timestamp: new Date().toISOString(), details: 'Admin logged in' },
-      { id: 2, action: 'Face Verified', user: 'Husnain', timestamp: new Date().toISOString(), details: 'Door Unlocked' }
-    ]);
+  if (url.includes('/cafe/orders')) {
+    if (method === 'POST') {
+      const newOrder = {
+        id: `ord-${Date.now()}`,
+        ...(req.body || {}),
+        status: 'PENDING',
+        created_at: new Date().toISOString()
+      };
+      return res.status(201).json(newOrder);
+    }
+    return res.status(200).json(CAFE_ORDERS);
   }
 
-  // 11. Cafe Menu & POS
-  if (url.includes('/cafe/menu') || url.includes('/cafe/products')) {
-    return res.status(200).json([
-      { id: 'c-1', name: 'Whey Protein Shake (Vanilla)', category: 'Protein Shakes', price: 450, stock: 50 },
-      { id: 'c-2', name: 'Pre-Workout Energy Booster', category: 'Pre-Workout Drinks', price: 350, stock: 40 },
-      { id: 'c-3', name: 'BCAA Amino Burst', category: 'Energy & Hydration', price: 300, stock: 35 },
-      { id: 'c-4', name: 'Creatine Monohydrate Scoop', category: 'Supplements', price: 150, stock: 80 }
-    ]);
+  if (url.includes('/cafe/analytics')) {
+    return res.status(200).json({
+      total_revenue: 45600,
+      total_orders: CAFE_ORDERS.length || 15,
+      top_products: [
+        { name: 'Whey Protein Shake', sold: 45, revenue: 20250 },
+        { name: 'Pre-Workout Shot', sold: 30, revenue: 10500 },
+        { name: 'BCAA Hydration', sold: 25, revenue: 7500 }
+      ]
+    });
   }
 
-  // 12. Workout Templates
+  // 10. Workout Templates, Exercises & Logs
   if (url.includes('/workout/templates')) {
-    return res.status(200).json([
+    // Return either array of templates or member specific dict
+    const tplList = Object.values(WORKOUT_TEMPLATES);
+    return res.status(200).json(tplList.length ? tplList : [
       { id: 'tpl-1', name: 'Push Day (Chest, Shoulders & Triceps)', icon: '⚡', target_muscle: 'Chest, Shoulders, Triceps', exercises: [] },
       { id: 'tpl-2', name: 'Pull Day (Back & Biceps)', icon: '🚀', target_muscle: 'Back & Biceps', exercises: [] },
       { id: 'tpl-3', name: 'Legs & Core Power', icon: '🔥', target_muscle: 'Quads, Hamstrings & Abs', exercises: [] }
+    ]);
+  }
+
+  if (url.includes('/workout/logs')) {
+    return res.status(200).json(WORKOUT_LOGS);
+  }
+
+  if (url.includes('/workout/exercises')) {
+    return res.status(200).json([
+      { id: 'ex-1', name: 'Barbell Bench Press', muscle: 'Chest' },
+      { id: 'ex-2', name: 'Incline Dumbbell Press', muscle: 'Upper Chest' },
+      { id: 'ex-3', name: 'Overhead Shoulder Press', muscle: 'Shoulders' },
+      { id: 'ex-4', name: 'Lat Pulldown', muscle: 'Back' },
+      { id: 'ex-5', name: 'Barbell Deadlift', muscle: 'Back & Legs' },
+      { id: 'ex-6', name: 'Bicep Barbell Curl', muscle: 'Biceps' },
+      { id: 'ex-7', name: 'Barbell Squat', muscle: 'Quads' },
+      { id: 'ex-8', name: 'Leg Press', muscle: 'Quads & Glutes' }
+    ]);
+  }
+
+  if (url.includes('/workout/dashboard')) {
+    return res.status(200).json({
+      total_workouts: 12,
+      streak_days: 4,
+      calories_burned: 4800,
+      favorite_exercise: 'Barbell Bench Press'
+    });
+  }
+
+  // 11. Activity & Audit Logs
+  if (url.includes('/activity') || url.includes('/events')) {
+    return res.status(200).json([
+      { id: 1, action: 'User Login', user: 'admin', timestamp: new Date().toISOString(), details: 'Admin logged in' },
+      { id: 2, action: 'Face Verified', user: 'Husnain', timestamp: new Date().toISOString(), details: 'Door Unlocked' },
+      { id: 3, action: 'Cafe Order Placed', user: 'Ahsan', timestamp: new Date().toISOString(), details: 'Whey Protein Shake' }
     ]);
   }
 
