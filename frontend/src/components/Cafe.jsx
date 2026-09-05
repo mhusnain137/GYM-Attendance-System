@@ -475,6 +475,8 @@ function Cafe() {
     return matchCat && matchSearch;
   });
 
+  const currentTab = (activeTab || 'POS').toUpperCase();
+
   return (
     <div className="cafe-container">
       {/* Top Header Bar */}
@@ -487,28 +489,28 @@ function Cafe() {
         </div>
         <div className="cafe-header-actions">
           <button 
-            className={`tab-btn ${activeTab === 'pos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pos')}
+            className={`tab-btn ${currentTab === 'POS' ? 'active' : ''}`}
+            onClick={() => setActiveTab('POS')}
           >
             🛒 POS Register
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
-            onClick={() => setActiveTab('orders')}
+            className={`tab-btn ${currentTab === 'ORDERS' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ORDERS'); fetchOrders(); }}
           >
             📋 Orders Feed {orders.filter(o => o.order_status === 'PENDING_APPROVAL').length > 0 && (
               <span className="badge-count">{orders.filter(o => o.order_status === 'PENDING_APPROVAL').length}</span>
             )}
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'inventory' ? 'active' : ''}`}
-            onClick={() => setActiveTab('inventory')}
+            className={`tab-btn ${currentTab === 'INVENTORY' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('INVENTORY'); fetchProducts(); }}
           >
             📦 Inventory & Menu
           </button>
           <button 
-            className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analytics')}
+            className={`tab-btn ${currentTab === 'ANALYTICS' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('ANALYTICS'); fetchAnalytics(); }}
           >
             📊 Cafe Insights
           </button>
@@ -516,7 +518,7 @@ function Cafe() {
       </div>
 
       {/* Main Content Areas */}
-      {activeTab === 'pos' && (
+      {currentTab === 'POS' && (
         <div className="pos-layout">
           {/* Left: Product Catalog */}
           <div className="pos-catalog-panel">
@@ -821,7 +823,7 @@ function Cafe() {
       {/* ============================================================
           TAB 2: LIVE ORDERS QUEUE
           ============================================================ */}
-      {activeTab === 'ORDERS' && (
+      {currentTab === 'ORDERS' && (
         <div className="orders-view-container">
           <div className="orders-filters-bar">
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1087,7 +1089,7 @@ function Cafe() {
       {/* ============================================================
           TAB 3: INVENTORY & STOCK MANAGER
           ============================================================ */}
-      {activeTab === 'INVENTORY' && (
+      {currentTab === 'INVENTORY' && (
         <div className="inventory-container">
           <div className="inventory-header-bar">
             <div>
@@ -1201,7 +1203,7 @@ function Cafe() {
       {/* ============================================================
           TAB 4: CAFE ANALYTICS
           ============================================================ */}
-      {activeTab === 'ANALYTICS' && analytics && (
+      {currentTab === 'ANALYTICS' && analytics && (
         <div>
           {/* Top Metric Cards */}
           <div className="analytics-grid">

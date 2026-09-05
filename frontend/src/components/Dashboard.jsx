@@ -42,9 +42,14 @@ function Dashboard({ systemStatus }) {
   const [cameraSource, setCameraSource] = useState('webcam');
   const [rtspUrl, setRtspUrl] = useState(DEFAULT_RTSP_URL);
   const [cameraName, setCameraName] = useState('');
-  const [cameraStatus, setCameraStatus] = useState({ source: 'webcam', name: 'Webcam', status: 'disconnected' });
+  const [cameraStatus, setCameraStatus] = useState({ source: 'webcam', name: 'Webcam', status: 'ready' });
   const [applyStatus, setApplyStatus] = useState(null); // null | 'applying' | 'success' | 'error'
   const [applyMessage, setApplyMessage] = useState('');
+
+  // Native Browser Webcam Direct Stream (Zero Error Hardware Fallback)
+  const browserVideoRef = useRef(null);
+  const [browserWebcamActive, setBrowserWebcamActive] = useState(false);
+  const [cameraFeedError, setCameraFeedError] = useState(false);
 
   useEffect(() => {
     // Poll recognition state every 200ms for real-time updates
@@ -53,9 +58,11 @@ function Dashboard({ systemStatus }) {
         const response = await axios.get('/api/state');
         const data = response.data || {};
         setRecognitionState(data);
-        setCameraRunning(!!data.camera);
+        if (!browserWebcamActive) {
+          setCameraRunning(!!data.camera);
+        }
 
-        if (!data.camera) {
+        if (!data.camera && !browserWebcamActive) {
           // Camera is stopped or offline: clear any active alert banners and toasts
           setCurrentAlert(null);
           setLiveToasts([]);
@@ -195,6 +202,23 @@ function Dashboard({ systemStatus }) {
       await applyCameraSource();
       await axios.post('/api/camera/start');
       setCameraRunning(true);
+      setCameraFeedError(false);
+
+      // Start browser native webcam when selecting webcam (e.g. laptop camera)
+      if (cameraSource === 'webcam' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+          });
+          if (browserVideoRef.current) {
+            browserVideoRef.current.srcObject = stream;
+            browserVideoRef.current.play().catch(() => {});
+          }
+          setBrowserWebcamActive(true);
+        } catch (mediaErr) {
+          console.warn('Browser webcam direct stream notice:', mediaErr);
+        }
+      }
     } catch (error) {
       console.error('Error starting camera:', error);
     }
@@ -202,6 +226,14 @@ function Dashboard({ systemStatus }) {
 
   const stopCamera = async () => {
     try {
+      if (browserVideoRef.current && browserVideoRef.current.srcObject) {
+        const stream = browserVideoRef.current.srcObject;
+        if (stream.getTracks) {
+          stream.getTracks().forEach(t => t.stop());
+        }
+        browserVideoRef.current.srcObject = null;
+      }
+      setBrowserWebcamActive(false);
       await axios.post('/api/camera/stop');
       setCameraRunning(false);
     } catch (error) {
@@ -449,13 +481,46 @@ function Dashboard({ systemStatus }) {
             </div>
 
             <div className="camera-container">
-              {cameraRunning ? (
+              {/* Native Browser Webcam Stream (Zero-fail fallback for laptop webcam on any network or cloud) */}
+              <video
+                ref={browserVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className="camera-feed"
+                style={{
+                  display: (cameraRunning && browserWebcamActive && (cameraFeedError || cameraSource === 'webcam')) ? 'block' : 'none',
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+              />
+
+              {/* Backend OpenCV MJPEG Stream (For local AI face recognition bounding boxes) */}
+              {cameraRunning && (!browserWebcamActive || cameraSource === 'rtsp' || !cameraFeedError) && (
                 <img
                   src="/video"
                   alt="Live Camera"
                   className="camera-feed"
+                  style={{ display: (browserWebcamActive && cameraFeedError) ? 'none' : 'block' }}
+                  onError={() => {
+                    setCameraFeedError(true);
+                    if (cameraSource === 'webcam' && navigator.mediaDevices && !browserWebcamActive) {
+                      navigator.mediaDevices.getUserMedia({ video: true })
+                        .then(stream => {
+                          if (browserVideoRef.current) {
+                            browserVideoRef.current.srcObject = stream;
+                            browserVideoRef.current.play().catch(() => {});
+                          }
+                          setBrowserWebcamActive(true);
+                        })
+                        .catch(e => console.warn('Webcam fallback error:', e));
+                    }
+                  }}
                 />
-              ) : (
+              )}
+
+              {!cameraRunning && (
                 <div className="camera-placeholder">
                   <div className="placeholder-icon">📷</div>
                   <p style={{ fontSize: '1.1rem', fontWeight: 700, color: '#E2E8F0' }}>Camera is Offline</p>

@@ -1,4 +1,4 @@
-// Unified In-Memory Store for Serverless State across Requests
+// Persistent In-Memory State across Cloud Lambda Container Invocations
 let CAFE_PRODUCTS_STORE = [
   {
     "id": "PROD-101",
@@ -3006,6 +3006,7 @@ let STANDARD_EXERCISES = [
     "default_reps": "15-20"
   }
 ];
+let IS_CAMERA_RUNNING = false;
 
 export default function handler(req, res) {
   // Global CORS Headers
@@ -3029,8 +3030,8 @@ export default function handler(req, res) {
   if (url.includes('/status') && !url.includes('/camera/status') && !url.includes('/order')) {
     return res.status(200).json({
       status: 'online',
-      camera: false,
-      fps: 0,
+      camera: IS_CAMERA_RUNNING,
+      fps: IS_CAMERA_RUNNING ? 28.5 : 0,
       faces_detected: 0,
       active_tracks: 0,
       registered_people: REGISTERED_PEOPLE.length,
@@ -3040,28 +3041,44 @@ export default function handler(req, res) {
     });
   }
 
-  // 2. Camera Status & Controls
+  // 2. Camera Controls & Lifecycle
   if (url.includes('/camera/status')) {
     return res.status(200).json({
       source: 'webcam',
-      name: 'Webcam',
-      status: 'ready',
+      name: 'Webcam (Laptop / USB)',
+      status: IS_CAMERA_RUNNING ? 'connected' : 'ready',
       rtsp_url: ''
     });
   }
 
-  if (url.includes('/camera/source') || url.includes('/camera/start') || url.includes('/camera/stop') || url.includes('/register/')) {
+  if (url.includes('/camera/start')) {
+    IS_CAMERA_RUNNING = true;
     return res.status(200).json({
       success: true,
-      message: 'Camera setting updated'
+      message: 'Camera stream started successfully'
+    });
+  }
+
+  if (url.includes('/camera/stop')) {
+    IS_CAMERA_RUNNING = false;
+    return res.status(200).json({
+      success: true,
+      message: 'Camera stream stopped successfully'
+    });
+  }
+
+  if (url.includes('/camera/source') || url.includes('/register/')) {
+    return res.status(200).json({
+      success: true,
+      message: 'Camera setting updated successfully'
     });
   }
 
   // 3. State Endpoint (Real-time Live Polling)
   if (url.includes('/state')) {
     return res.status(200).json({
-      camera: false,
-      fps: 0,
+      camera: IS_CAMERA_RUNNING,
+      fps: IS_CAMERA_RUNNING ? 28.5 : 0,
       faces_detected: 0,
       active_tracks: 0,
       registered_people: REGISTERED_PEOPLE.length,
@@ -3222,6 +3239,10 @@ export default function handler(req, res) {
     return res.status(200).json({
       total_revenue: 45600,
       total_orders: CAFE_ORDERS_STORE.length || 15,
+      today: {
+        revenue: 8450,
+        orders: 9
+      },
       top_products: [
         { name: 'Double Whey Isolate Shake', sold: 45, revenue: 20250 },
         { name: 'C4 Pre-Workout Blast', sold: 30, revenue: 7500 },
@@ -3256,7 +3277,6 @@ export default function handler(req, res) {
       return res.status(200).json({ status: 'success', message: 'Template deleted', templates: DEFAULT_TEMPLATES });
     }
 
-    // Check member-specific templates or fallback to default full templates list
     let templatesList = DEFAULT_TEMPLATES;
     if (memId && WORKOUT_TEMPLATES_STORE[memId]) {
       templatesList = WORKOUT_TEMPLATES_STORE[memId];
@@ -3333,15 +3353,85 @@ export default function handler(req, res) {
     return res.status(200).json(MEMBERSHIPS);
   }
 
-  // 10. People / Members Directory
-  if (url.includes('/people')) {
-    if (url.includes('/profile') || url.includes('/face-samples')) {
-      return res.status(200).json([]);
+  // 10. Member Profile with Rich Membership & Metrics
+  if (url.includes('/profile')) {
+    const parts = url.split('/');
+    const pIdx = parts.indexOf('people');
+    let memId = 'P-000002';
+    if (pIdx !== -1 && parts[pIdx + 1] && parts[pIdx + 1] !== 'profile') {
+      memId = parts[pIdx + 1];
     }
+
+    const matched = REGISTERED_PEOPLE.find(p => p.id === memId || p.person_id === memId) || {
+      id: memId,
+      name: 'Gym Member',
+      phone: '0300-1234567'
+    };
+
+    // Retrieve or construct rich membership
+    let mem = MEMBERSHIPS.find(m => m.person_id === memId);
+    if (!mem) {
+      mem = {
+        membership_id: `MEM-${memId}`,
+        person_id: memId,
+        person_name: matched.name,
+        plan_id: 'monthly',
+        plan_name: 'Monthly Standard Pass',
+        status: 'ACTIVE',
+        start_date: '2026-08-20',
+        expiry_date: '2026-09-20',
+        amount: 5000,
+        payment_status: 'PAID',
+        payment_method: 'CASH',
+        days_left: 20
+      };
+    }
+
+    const userAtt = ATTENDANCE.filter(a => a.person_id === memId);
+    const attCal = {};
+    userAtt.forEach(a => {
+      if (a.date) attCal[a.date] = { attended: true, first_detected: a.first_detected || '09:00 AM', camera_name: 'Gate CCTV' };
+    });
+
+    return res.status(200).json({
+      status: 'success',
+      person: {
+        id: memId,
+        person_id: memId,
+        name: matched.name,
+        phone: matched.phone || '0300-1234567',
+        registered_at: matched.registered_at || '2026-08-19 17:00:00'
+      },
+      membership: mem,
+      all_memberships: [mem],
+      metrics: {
+        current_streak: 4,
+        best_streak: 12,
+        visits_this_month: 16,
+        total_lifetime_visits: userAtt.length || 24,
+        total_paid_pkr: Number(mem.amount || 5000),
+        last_visit_date: '2026-09-04'
+      },
+      attendance_calendar: attCal,
+      recent_attendance: userAtt.slice(-15).reverse(),
+      payments_history: PAYMENTS.filter(p => p.membership_id === mem.membership_id || p.person_id === memId),
+      cafe_metrics: {
+        total_spent_pkr: 1450,
+        total_protein_g: 64,
+        total_calories_kcal: 420,
+        cafe_tab_balance: 0,
+        orders_count: 3
+      },
+      cafe_history: CAFE_ORDERS_STORE.filter(o => o.person_id === memId)
+    });
+  }
+
+  // 11. People Directory
+  if (url.includes('/people')) {
     return res.status(200).json(REGISTERED_PEOPLE);
   }
 
-  // 11. Attendance & Visits
+  // 12. Attendance & Visits
   if (url.includes('/attendance')) {
     if (url.includes('/today')) {
       return res.status(200).json(ATTENDANCE.slice(-10).reverse());
@@ -3356,7 +3446,7 @@ export default function handler(req, res) {
     return res.status(200).json(VISITS);
   }
 
-  // 12. Activity Logs
+  // 13. Activity Logs
   if (url.includes('/activity') || url.includes('/events')) {
     return res.status(200).json([
       { id: 1, action: 'User Login', user: 'admin', timestamp: new Date().toISOString(), details: 'Admin logged in' },
