@@ -39,8 +39,12 @@ app.include_router(cafe_router)
 app.include_router(auth_router)
 app.include_router(workout_router)
 
-os.makedirs(recognition_config.FACE_CROPS_DIR, exist_ok=True)
-app.mount("/api/face-crops", StaticFiles(directory=recognition_config.FACE_CROPS_DIR), name="face-crops")
+try:
+    os.makedirs(recognition_config.FACE_CROPS_DIR, exist_ok=True)
+    if os.path.exists(recognition_config.FACE_CROPS_DIR):
+        app.mount("/api/face-crops", StaticFiles(directory=recognition_config.FACE_CROPS_DIR), name="face-crops")
+except Exception as e:
+    print(f"[Startup] Static face crops mount notice: {e}")
 
 # CORS middleware
 app.add_middleware(

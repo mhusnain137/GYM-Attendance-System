@@ -19,6 +19,37 @@ PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.js
 MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
 
 
+DEFAULT_USERS = [
+    {
+        "user_id": "USR-001",
+        "username": "admin",
+        "password": "admin123",
+        "name": "Gym Owner (Super Admin)",
+        "role": "ADMIN",
+        "is_active": True,
+        "created_at": "2026-09-01T17:40:00"
+    },
+    {
+        "user_id": "USR-002",
+        "username": "manager",
+        "password": "manager123",
+        "name": "Ali Supervisor (Manager)",
+        "role": "MANAGER",
+        "is_active": True,
+        "created_at": "2026-09-01T17:40:00"
+    },
+    {
+        "user_id": "USR-003",
+        "username": "reception",
+        "password": "reception123",
+        "name": "Sara Counter (Receptionist)",
+        "role": "RECEPTIONIST",
+        "is_active": True,
+        "created_at": "2026-09-01T17:40:00"
+    }
+]
+
+
 def load_json(filepath: str, default=None):
     if default is None:
         default = []
@@ -38,10 +69,16 @@ def load_json(filepath: str, default=None):
     if os.path.exists(filepath):
         try:
             with open(filepath, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                if data:
+                    return data
         except Exception as e:
             print(f"[Auth] Error reading {filepath}: {e}")
+            if filepath == USERS_FILE:
+                return DEFAULT_USERS
             return default
+    if filepath == USERS_FILE:
+        return DEFAULT_USERS
     return default
 
 
