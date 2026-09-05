@@ -1,0 +1,7 @@
+{
+  "name": "gym-attendance-system-fullstack",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build"
+  }
+}
