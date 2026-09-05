@@ -7,17 +7,17 @@ from fastapi import APIRouter, HTTPException, Query, Header
 from pydantic import BaseModel
 
 import sys
-import recognition_config
 
-sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, 'app'))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, 'app'))
 from db import mongo
 
 router = APIRouter(prefix='/api/cafe', tags=['cafe'])
 
-PRODUCTS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'cafe_products.json')
-ORDERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'cafe_orders.json')
-MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'memberships.json')
-PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, 'data', 'persons.json')
+PRODUCTS_FILE = os.path.join(PROJECT_ROOT, 'data', 'cafe_products.json')
+ORDERS_FILE = os.path.join(PROJECT_ROOT, 'data', 'cafe_orders.json')
+MEMBERSHIPS_FILE = os.path.join(PROJECT_ROOT, 'data', 'memberships.json')
+PERSONS_FILE = os.path.join(PROJECT_ROOT, 'data', 'persons.json')
 
 CAFE_FILE_TO_COLL = {
     PRODUCTS_FILE: 'cafe_products',

@@ -7,16 +7,16 @@ from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 
 import sys
-import recognition_config
 
-sys.path.insert(0, os.path.join(recognition_config.PROJECT_ROOT, "app"))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "app"))
 from db import mongo
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-USERS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "users.json")
-PERSONS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
-MEMBERSHIPS_FILE = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
+USERS_FILE = os.path.join(PROJECT_ROOT, "data", "users.json")
+PERSONS_FILE = os.path.join(PROJECT_ROOT, "data", "persons.json")
+MEMBERSHIPS_FILE = os.path.join(PROJECT_ROOT, "data", "memberships.json")
 
 
 DEFAULT_USERS = [
