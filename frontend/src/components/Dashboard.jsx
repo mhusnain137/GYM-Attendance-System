@@ -398,11 +398,11 @@ function Dashboard({ systemStatus }) {
 
             <div className="camera-status-bar">
               <span className="camera-status-indicator">
-                <span className={`status-dot ${cameraStatus.status === 'connected' ? 'active' : ''}`} />
-                <span>Active Device: {cameraStatus.name} ({cameraStatus.source.toUpperCase()})</span>
+                <span className={`status-dot ${cameraStatus?.status === 'connected' || cameraStatus?.status === 'ready' ? 'active' : ''}`} />
+                <span>Active Device: {cameraStatus?.name || 'Camera'} ({(cameraStatus?.source || 'webcam').toUpperCase()})</span>
               </span>
               <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--c-mocha)' }}>
-                {cameraStatus.status === 'connected' ? 'CONNECTED & READY' : 'OFFLINE'}
+                {cameraStatus?.status === 'connected' || cameraStatus?.status === 'ready' ? 'CONNECTED & READY' : 'OFFLINE'}
               </span>
             </div>
           </div>
@@ -412,7 +412,7 @@ function Dashboard({ systemStatus }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2>
                 <span>📹 LIVE FEED</span>
-                <span style={{ fontSize: '0.85rem', color: 'var(--c-slate-light)', fontWeight: 600 }}>({cameraStatus.name})</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--c-slate-light)', fontWeight: 600 }}>({cameraStatus?.name || 'Camera'})</span>
               </h2>
               <div className="status-pill-badge" style={{ padding: '4px 12px' }}>
                 <span className={`status-dot ${cameraRunning ? 'active' : ''}`} />
@@ -421,30 +421,30 @@ function Dashboard({ systemStatus }) {
             </div>
 
             {/* Smart Door Access Status Bar */}
-            <div className={`door-access-indicator ${recognitionState.door_status?.open ? 'door-unlocked' : (recognitionState.door_status?.status === 'LOCKED' ? 'door-denied' : 'door-idle')}`}>
+            <div className={`door-access-indicator ${recognitionState?.door_status?.open ? 'door-unlocked' : (recognitionState?.door_status?.status === 'LOCKED' ? 'door-denied' : 'door-idle')}`}>
               <div className="door-indicator-left">
                 <div className="door-indicator-icon">
-                  {recognitionState.door_status?.open ? '🚪🔓' : (recognitionState.door_status?.status === 'LOCKED' ? '🚫🔒' : '🚪🔒')}
+                  {recognitionState?.door_status?.open ? '🚪🔓' : (recognitionState?.door_status?.status === 'LOCKED' ? '🚫🔒' : '🚪🔒')}
                 </div>
                 <div>
                   <div className="door-indicator-title">
-                    <span className="door-indicator-badge">{recognitionState.door_status?.badge || '🔒 DOOR SECURED'}</span>
-                    {recognitionState.door_status?.person_name && (
+                    <span className="door-indicator-badge">{recognitionState?.door_status?.badge || '🔒 DOOR SECURED'}</span>
+                    {recognitionState?.door_status?.person_name && (
                       <span className="door-indicator-name">— {recognitionState.door_status.person_name}</span>
                     )}
                   </div>
                   <div className="door-indicator-msg">
-                    {recognitionState.door_status?.message || 'Access Control System Ready'}
+                    {recognitionState?.door_status?.message || 'Access Control System Ready'}
                   </div>
                 </div>
               </div>
               <div className="door-pulse-indicator">
-                {recognitionState.door_status?.trial_info && (
+                {recognitionState?.door_status?.trial_info && (
                   <span className="door-countdown-badge">
                     ⏳ {recognitionState.door_status.trial_info}
                   </span>
                 )}
-                <span className={`door-light ${recognitionState.door_status?.open ? 'green' : (recognitionState.door_status?.status === 'LOCKED' ? 'red' : 'gray')}`} />
+                <span className={`door-light ${recognitionState?.door_status?.open ? 'green' : (recognitionState?.door_status?.status === 'LOCKED' ? 'red' : 'gray')}`} />
               </div>
             </div>
 
@@ -472,18 +472,18 @@ function Dashboard({ systemStatus }) {
           <div className="card detected-people-card">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <h2>📅 TODAY'S LOGS</h2>
-              <span className="count-badge">{todayAttendance.length} Entries</span>
+              <span className="count-badge">{(todayAttendance || []).length} Entries</span>
             </div>
 
             <div className="detected-people-list">
-              {todayAttendance.length === 0 ? (
+              {(todayAttendance || []).length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px 10px', color: 'var(--c-slate-light)' }}>
                   <div style={{ fontSize: '2.5rem', marginBottom: '8px' }}>📋</div>
                   <p style={{ fontWeight: 700, color: 'var(--c-slate)' }}>No Attendance Yet Today</p>
                   <p style={{ fontSize: '0.82rem', marginTop: '4px' }}>Members passing the camera will appear here</p>
                 </div>
               ) : (
-                todayAttendance.map((record, index) => (
+                (todayAttendance || []).map((record, index) => (
                   <div 
                     key={index} 
                     className="person-card-compact"
@@ -532,7 +532,7 @@ function Dashboard({ systemStatus }) {
               <div className="system-status-item">
                 <span className="system-status-label">IoU Face Tracker</span>
                 <span className={`system-status-pill ${cameraRunning ? 'active' : 'offline'}`}>
-                  {cameraRunning ? `${recognitionState.active_tracks} ACTIVE` : 'INACTIVE'}
+                  {cameraRunning ? `${recognitionState?.active_tracks || 0} ACTIVE` : 'INACTIVE'}
                 </span>
               </div>
             </div>
@@ -545,7 +545,7 @@ function Dashboard({ systemStatus }) {
         <div className="stat-ribbon-card">
           <div className="stat-ribbon-icon-box sage">📅</div>
           <div className="stat-ribbon-info">
-            <span className="stat-ribbon-value">{todayAttendance.length}</span>
+            <span className="stat-ribbon-value">{(todayAttendance || []).length}</span>
             <span className="stat-ribbon-label">Today's Attendance</span>
           </div>
         </div>
@@ -553,7 +553,7 @@ function Dashboard({ systemStatus }) {
         <div className="stat-ribbon-card">
           <div className="stat-ribbon-icon-box mocha">⏱️</div>
           <div className="stat-ribbon-info">
-            <span className="stat-ribbon-value">{todayVisits.length}</span>
+            <span className="stat-ribbon-value">{(todayVisits || []).length}</span>
             <span className="stat-ribbon-label">Total Sightings</span>
           </div>
         </div>
@@ -561,7 +561,7 @@ function Dashboard({ systemStatus }) {
         <div className="stat-ribbon-card">
           <div className="stat-ribbon-icon-box slate">👥</div>
           <div className="stat-ribbon-info">
-            <span className="stat-ribbon-value">{recognitionState.registered_people || systemStatus.registered_people || 0}</span>
+            <span className="stat-ribbon-value">{recognitionState?.registered_people || systemStatus?.registered_people || 0}</span>
             <span className="stat-ribbon-label">Registered Members</span>
           </div>
         </div>
@@ -569,8 +569,8 @@ function Dashboard({ systemStatus }) {
         <div className="stat-ribbon-card">
           <div className="stat-ribbon-icon-box ochre">⚡</div>
           <div className="stat-ribbon-info">
-            <span className="stat-ribbon-value">{recognitionState.fps.toFixed(1)} <span style={{ fontSize: '0.9rem', color: 'var(--c-slate-light)' }}>FPS</span></span>
-            <span className="stat-ribbon-label">{recognitionState.active_tracks} Active Faces</span>
+            <span className="stat-ribbon-value">{Number(recognitionState?.fps || 0).toFixed(1)} <span style={{ fontSize: '0.9rem', color: 'var(--c-slate-light)' }}>FPS</span></span>
+            <span className="stat-ribbon-label">{recognitionState?.active_tracks || 0} Active Faces</span>
           </div>
         </div>
       </div>

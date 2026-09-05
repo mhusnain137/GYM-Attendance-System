@@ -371,7 +371,9 @@ function AppContent() {
         )}
 
         <main className="main-content">
-          {renderPage()}
+          <ErrorBoundary>
+            {renderPage()}
+          </ErrorBoundary>
         </main>
       </div>
     </div>
