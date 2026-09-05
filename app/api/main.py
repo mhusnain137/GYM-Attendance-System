@@ -95,9 +95,16 @@ def add_event(event_type, message, data=None):
 async def startup_event():
     """Initialize recognition service on startup"""
     global recognition_service
-    recognition_service = RecognitionService()
-    recognition_service.event_callback = lambda ev: add_event(ev.get("type", "SYSTEM"), ev.get("message", ""), ev.get("data"))
-    add_event("SYSTEM", "Recognition service initialized")
+    if RecognitionService is not None:
+        try:
+            recognition_service = RecognitionService()
+            recognition_service.event_callback = lambda ev: add_event(ev.get("type", "SYSTEM"), ev.get("message", ""), ev.get("data"))
+            add_event("SYSTEM", "Recognition service initialized")
+        except Exception as e:
+            print(f"[Startup] Recognition service init notice: {e}")
+            recognition_service = None
+    else:
+        print("[Startup] Recognition service skipped in cloud environment")
 
 @app.on_event("shutdown")
 async def shutdown_event():
