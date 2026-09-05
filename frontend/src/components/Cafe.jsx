@@ -471,133 +471,126 @@ function Cafe() {
   // Filtered Products for POS
   const filteredProducts = products.filter(p => {
     const matchCat = selectedCategory === 'ALL' || p.category === selectedCategory;
-    const matchSearch = !searchQuery || p.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchSearch = !searchQuery || (p.name || '').toLowerCase().includes((searchQuery || '').toLowerCase());
     return matchCat && matchSearch;
   });
 
   return (
     <div className="cafe-container">
-      {/* Top Header */}
+      {/* Top Header Bar */}
       <div className="cafe-header">
-        <div className="cafe-title-group">
-          <h2>🥤 Gym Cafe & Nutrition POS</h2>
-          <p>Quick Counter Billing • High-Protein Shakes • Stock & Member Khata</p>
+        <div>
+          <h2>🏋️ TITAN NUTRITION & CAFE POS</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Protein Bar, Pre-Workout Smoothies & Health Supplement Counter
+          </p>
         </div>
-
-        <div className="cafe-tabs">
+        <div className="cafe-header-actions">
           <button 
-            className={`cafe-tab-btn ${activeTab === 'POS' ? 'active' : ''}`}
-            onClick={() => setActiveTab('POS')}
+            className={`tab-btn ${activeTab === 'pos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('pos')}
           >
-            🛒 POS Counter
+            🛒 POS Register
           </button>
           <button 
-            className={`cafe-tab-btn ${activeTab === 'ORDERS' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ORDERS'); fetchOrders(); }}
+            className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
           >
-            📋 Live Orders
-            {orders.filter(o => o.order_status === 'PREPARING').length > 0 && (
-              <span className="cafe-badge cafe-badge-danger">
-                {orders.filter(o => o.order_status === 'PREPARING').length}
-              </span>
+            📋 Orders Feed {orders.filter(o => o.order_status === 'PENDING_APPROVAL').length > 0 && (
+              <span className="badge-count">{orders.filter(o => o.order_status === 'PENDING_APPROVAL').length}</span>
             )}
           </button>
           <button 
-            className={`cafe-tab-btn ${activeTab === 'INVENTORY' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('INVENTORY'); fetchProducts(); }}
+            className={`tab-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inventory')}
           >
-            📦 Inventory & Stock
-            {products.filter(p => p.is_low_stock).length > 0 && (
-              <span className="cafe-badge cafe-badge-danger">
-                {products.filter(p => p.is_low_stock).length} Low
-              </span>
-            )}
+            📦 Inventory & Menu
           </button>
           <button 
-            className={`cafe-tab-btn ${activeTab === 'ANALYTICS' ? 'active' : ''}`}
-            onClick={() => { setActiveTab('ANALYTICS'); fetchAnalytics(); }}
+            className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+            onClick={() => setActiveTab('analytics')}
           >
-            📊 Cafe Analytics
+            📊 Cafe Insights
           </button>
         </div>
       </div>
 
-      {/* ============================================================
-          TAB 1: POS COUNTER
-          ============================================================ */}
-      {activeTab === 'POS' && (
+      {/* Main Content Areas */}
+      {activeTab === 'pos' && (
         <div className="pos-layout">
-          {/* Products Panel */}
-          <div className="pos-products-panel">
-            <div className="pos-filters-bar">
-              <div className="pos-search-box">
+          {/* Left: Product Catalog */}
+          <div className="pos-catalog-panel">
+            {/* Search & Category Filter */}
+            <div className="pos-filters-row">
+              <div className="search-box">
                 <span>🔍</span>
                 <input 
-                  type="text"
-                  placeholder="Search shakes, pre-workouts, meals..."
+                  type="text" 
+                  placeholder="Search protein shakes, pre-workouts, snacks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
-                )}
+                {searchQuery && <button onClick={() => setSearchQuery('')}>✕</button>}
               </div>
-            </div>
 
-            {/* Category Pills */}
-            <div className="pos-category-pills">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  className={`cat-pill ${selectedCategory === cat.id ? 'active' : ''}`}
-                  onClick={() => setSelectedCategory(cat.id)}
-                >
-                  {cat.icon} {cat.label}
-                </button>
-              ))}
+              <div className="category-chips">
+                {CATEGORIES.map(cat => (
+                  <button 
+                    key={cat.id}
+                    className={`cat-chip ${selectedCategory === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCategory(cat.id)}
+                  >
+                    <span>{cat.icon}</span>
+                    <span>{cat.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Products Grid */}
             <div className="pos-products-grid">
-              {filteredProducts.map(prod => (
-                <div 
-                  key={prod.id} 
-                  className={`product-card ${prod.stock <= 0 ? 'out-of-stock' : ''}`}
-                  onClick={() => prod.stock > 0 && handleAddToCart(prod)}
-                >
-                  <div className="prod-header">
-                    <span className="prod-category-tag">{prod.category}</span>
-                    <span className={`stock-tag ${prod.stock_status.toLowerCase().replace('_', '-')}`}>
-                      {prod.stock <= 0 ? 'Out of Stock' : `${prod.stock} left`}
-                    </span>
-                  </div>
+              {filteredProducts.map(prod => {
+                const stockTagClass = (prod.stock_status || (prod.stock <= 0 ? 'out_of_stock' : (prod.stock <= (prod.min_stock_alert || 5) ? 'low_stock' : 'in_stock'))).toLowerCase().replace('_', '-');
+                return (
+                  <div 
+                    key={prod.id} 
+                    className={`product-card ${prod.stock <= 0 ? 'out-of-stock' : ''}`}
+                    onClick={() => prod.stock > 0 && handleAddToCart(prod)}
+                  >
+                    <div className="prod-header">
+                      <span className="prod-category-tag">{prod.category}</span>
+                      <span className={`stock-tag ${stockTagClass}`}>
+                        {prod.stock <= 0 ? 'Out of Stock' : `${prod.stock} left`}
+                      </span>
+                    </div>
 
-                  <h4 className="prod-name">{prod.name}</h4>
+                    <h4 className="prod-name">{prod.name}</h4>
 
-                  <div className="prod-macros-bar">
-                    {prod.protein_g > 0 && (
-                      <span className="macro-chip protein">⚡ {prod.protein_g}g Pro</span>
-                    )}
-                    {prod.calories > 0 && (
-                      <span className="macro-chip calories">🔥 {prod.calories} kcal</span>
-                    )}
-                  </div>
+                    <div className="prod-macros-bar">
+                      {prod.protein_g > 0 && (
+                        <span className="macro-chip protein">⚡ {prod.protein_g}g Pro</span>
+                      )}
+                      {prod.calories > 0 && (
+                        <span className="macro-chip calories">🔥 {prod.calories} kcal</span>
+                      )}
+                    </div>
 
-                  <div className="prod-footer">
-                    <div className="prod-price">Rs. {prod.price}</div>
-                    <button 
-                      className="prod-add-btn" 
-                      disabled={prod.stock <= 0}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (prod.stock > 0) handleAddToCart(prod);
-                      }}
-                    >
-                      {prod.customizable ? 'Customize +' : '+ Add'}
-                    </button>
+                    <div className="prod-footer">
+                      <div className="prod-price">Rs. {prod.price}</div>
+                      <button 
+                        className="prod-add-btn" 
+                        disabled={prod.stock <= 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (prod.stock > 0) handleAddToCart(prod);
+                        }}
+                      >
+                        {prod.customizable ? 'Customize +' : '+ Add'}
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {filteredProducts.length === 0 && (
                 <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
@@ -1144,8 +1137,8 @@ function Cafe() {
                       </span>
                     </td>
                     <td>
-                      <span className={`stock-tag ${prod.stock_status.toLowerCase().replace('_', '-')}`}>
-                        {prod.stock} Units {prod.is_low_stock && '⚠️ Low'}
+                      <span className={`stock-tag ${(prod.stock_status || (prod.stock <= 0 ? 'out_of_stock' : (prod.stock <= (prod.min_stock_alert || 5) ? 'low_stock' : 'in_stock'))).toLowerCase().replace('_', '-')}`}>
+                        {prod.stock} Units {prod.stock <= (prod.min_stock_alert || 5) && '⚠️ Low'}
                       </span>
                     </td>
                     <td>

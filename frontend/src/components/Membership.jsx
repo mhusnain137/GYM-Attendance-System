@@ -560,26 +560,26 @@ function Membership() {
   // Filter & Sort
   const filteredMemberships = enrichedMemberships
     .filter(m => {
-      const q = searchTerm.toLowerCase().trim();
-      const matchesSearch = !q || 
-        m.person_name.toLowerCase().includes(q) ||
-        m.person_id.toLowerCase().includes(q) ||
-        m.membership_id.toLowerCase().includes(q);
+      const q = (searchTerm || '').toLowerCase().trim();
+      const pName = (m.person_name || '').toLowerCase();
+      const pId = (m.person_id || '').toLowerCase();
+      const mId = (m.membership_id || m.id || '').toLowerCase();
+      const matchesSearch = !q || pName.includes(q) || pId.includes(q) || mId.includes(q);
 
       if (!matchesSearch) return false;
 
-      if (filter === 'ACTIVE') return m.info.isActive && !m.info.isExpiringSoon;
-      if (filter === 'EXPIRING_SOON') return m.info.isExpiringSoon;
-      if (filter === 'EXPIRED') return m.info.isExpired;
-      if (filter === 'FROZEN') return m.info.isFrozen;
+      if (filter === 'ACTIVE') return m.info?.isActive && !m.info?.isExpiringSoon;
+      if (filter === 'EXPIRING_SOON') return m.info?.isExpiringSoon;
+      if (filter === 'EXPIRED') return m.info?.isExpired;
+      if (filter === 'FROZEN') return m.info?.isFrozen;
 
       return true;
     })
     .sort((a, b) => {
       if (sortBy === 'expiry_date') return new Date(a.expiry_date || 0) - new Date(b.expiry_date || 0);
-      if (sortBy === 'name') return a.person_name.localeCompare(b.person_name);
+      if (sortBy === 'name') return (a.person_name || '').localeCompare(b.person_name || '');
       if (sortBy === 'amount') return (b.amount || 0) - (a.amount || 0);
-      if (sortBy === 'remaining_days') return a.info.daysLeft - b.info.daysLeft;
+      if (sortBy === 'remaining_days') return (a.info?.daysLeft || 0) - (b.info?.daysLeft || 0);
       return 0;
     });
 
@@ -715,7 +715,7 @@ function Membership() {
             const isMenuOpen = activeMenuId === m.membership_id;
 
             return (
-              <div key={m.membership_id} className={`membership-card ${m.info.status.toLowerCase()}`}>
+              <div key={m.membership_id || index} className={`membership-card ${(m.info?.status || 'active').toLowerCase()}`}>
                 {/* Top Member Header & 3-Dot Action Menu */}
                 <div 
                   className="card-top" 

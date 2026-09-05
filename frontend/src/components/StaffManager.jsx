@@ -104,8 +104,8 @@ function StaffManager() {
                 </td>
                 <td style={{ fontFamily: 'monospace', color: 'var(--accent)' }}>@{u.username}</td>
                 <td>
-                  <span className={`role-badge ${u.role.toLowerCase()}`}>
-                    {u.role}
+                  <span className={`role-badge ${(u.role || 'RECEPTIONIST').toLowerCase()}`}>
+                    {u.role || 'STAFF'}
                   </span>
                 </td>
                 <td>
