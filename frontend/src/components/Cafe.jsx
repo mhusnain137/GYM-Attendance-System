@@ -487,29 +487,29 @@ function Cafe() {
             Protein Bar, Pre-Workout Smoothies & Health Supplement Counter
           </p>
         </div>
-        <div className="cafe-header-actions">
+        <div className="cafe-tabs cafe-header-actions">
           <button 
-            className={`tab-btn ${currentTab === 'POS' ? 'active' : ''}`}
+            className={`cafe-tab-btn tab-btn ${currentTab === 'POS' ? 'active' : ''}`}
             onClick={() => setActiveTab('POS')}
           >
             🛒 POS Register
           </button>
           <button 
-            className={`tab-btn ${currentTab === 'ORDERS' ? 'active' : ''}`}
+            className={`cafe-tab-btn tab-btn ${currentTab === 'ORDERS' ? 'active' : ''}`}
             onClick={() => { setActiveTab('ORDERS'); fetchOrders(); }}
           >
             📋 Orders Feed {orders.filter(o => o.order_status === 'PENDING_APPROVAL').length > 0 && (
-              <span className="badge-count">{orders.filter(o => o.order_status === 'PENDING_APPROVAL').length}</span>
+              <span className="cafe-badge cafe-badge-danger badge-count">{orders.filter(o => o.order_status === 'PENDING_APPROVAL').length}</span>
             )}
           </button>
           <button 
-            className={`tab-btn ${currentTab === 'INVENTORY' ? 'active' : ''}`}
+            className={`cafe-tab-btn tab-btn ${currentTab === 'INVENTORY' ? 'active' : ''}`}
             onClick={() => { setActiveTab('INVENTORY'); fetchProducts(); }}
           >
             📦 Inventory & Menu
           </button>
           <button 
-            className={`tab-btn ${currentTab === 'ANALYTICS' ? 'active' : ''}`}
+            className={`cafe-tab-btn tab-btn ${currentTab === 'ANALYTICS' ? 'active' : ''}`}
             onClick={() => { setActiveTab('ANALYTICS'); fetchAnalytics(); }}
           >
             📊 Cafe Insights
@@ -521,25 +521,26 @@ function Cafe() {
       {currentTab === 'POS' && (
         <div className="pos-layout">
           {/* Left: Product Catalog */}
-          <div className="pos-catalog-panel">
+          <div className="pos-products-panel pos-catalog-panel">
             {/* Search & Category Filter */}
-            <div className="pos-filters-row">
-              <div className="search-box">
-                <span>🔍</span>
+            <div className="pos-filters-bar pos-filters-row">
+              <div className="pos-search-box search-box">
+                <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>🔍</span>
                 <input 
                   type="text" 
                   placeholder="Search protein shakes, pre-workouts, snacks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                {searchQuery && <button onClick={() => setSearchQuery('')}>✕</button>}
+                {searchQuery && <button type="button" onClick={() => setSearchQuery('')}>✕</button>}
               </div>
 
-              <div className="category-chips">
+              <div className="pos-category-pills category-chips">
                 {CATEGORIES.map(cat => (
                   <button 
                     key={cat.id}
-                    className={`cat-chip ${selectedCategory === cat.id ? 'active' : ''}`}
+                    type="button"
+                    className={`cat-pill cat-chip ${selectedCategory === cat.id ? 'active' : ''}`}
                     onClick={() => setSelectedCategory(cat.id)}
                   >
                     <span>{cat.icon}</span>

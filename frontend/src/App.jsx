@@ -69,8 +69,17 @@ function AppContent() {
     const handleAvatarUpdated = (e) => {
       setAvatarTimestamp(e.detail?.timestamp || Date.now());
     };
+    const handleCamStatus = (e) => {
+      if (e.detail && typeof e.detail.active === 'boolean') {
+        setSystemStatus(prev => ({ ...prev, camera: e.detail.active }));
+      }
+    };
     window.addEventListener('profile-picture-updated', handleAvatarUpdated);
-    return () => window.removeEventListener('profile-picture-updated', handleAvatarUpdated);
+    window.addEventListener('camera-active-status', handleCamStatus);
+    return () => {
+      window.removeEventListener('profile-picture-updated', handleAvatarUpdated);
+      window.removeEventListener('camera-active-status', handleCamStatus);
+    };
   }, []);
 
   useEffect(() => {
