@@ -112,8 +112,12 @@ function Cafe() {
   const fetchProducts = async () => {
     try {
       const res = await axios.get('/api/cafe/products');
-      if (res.data && res.data.products) {
-        setProducts(res.data.products);
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setProducts(res.data);
+        } else if (res.data.products && Array.isArray(res.data.products)) {
+          setProducts(res.data.products);
+        }
       }
     } catch (err) {
       console.error('Error fetching cafe products:', err);
@@ -123,8 +127,12 @@ function Cafe() {
   const fetchOrders = async () => {
     try {
       const res = await axios.get('/api/cafe/orders');
-      if (res.data && res.data.orders) {
-        setOrders(res.data.orders);
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setOrders(res.data);
+        } else if (res.data.orders && Array.isArray(res.data.orders)) {
+          setOrders(res.data.orders);
+        }
       }
     } catch (err) {
       console.error('Error fetching cafe orders:', err);

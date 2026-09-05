@@ -1,242 +1,5 @@
-export default function handler(req, res) {
-  // Global CORS Headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-User-Role, X-User-Id'
-  );
-
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  const url = req.url || '';
-  const method = req.method;
-
-  // In-Memory Database Snapshots from Local System
-  const REGISTERED_PEOPLE = [
-  {
-    "id": "P-000002",
-    "name": "Ahsan",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000003",
-    "name": "Jawad",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000004",
-    "name": "Abdul Hannan",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000005",
-    "name": "Hassaan",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000006",
-    "name": "Furqan",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000009",
-    "name": "Usman Bhai",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:00:00"
-  },
-  {
-    "id": "P-000010",
-    "name": "Husnain",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 17:37:03"
-  },
-  {
-    "id": "P-000011",
-    "name": "Ahmad Saeed",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-19 19:44:14"
-  },
-  {
-    "id": "P-000014",
-    "name": "Ahmad Riaz",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-25 18:02:57"
-  },
-  {
-    "id": "P-000016",
-    "name": "Junaid",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-25 18:48:42"
-  },
-  {
-    "id": "P-000017",
-    "name": "Sir Saleem",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-25 18:48:43"
-  },
-  {
-    "id": "P-000019",
-    "name": "Husnain Sarwar",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-25 19:37:17"
-  },
-  {
-    "id": "P-000020",
-    "name": "Ahmad bin saeed",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-25 19:48:56"
-  },
-  {
-    "id": "P-000022",
-    "name": "Sir Imran",
-    "phone": "0300-1234567",
-    "email": "",
-    "status": "active",
-    "registered_at": "2026-08-29 17:11:22"
-  }
-];
-  const MEMBERSHIPS = [
-  {
-    "membership_id": "M-000003",
-    "person_id": "P-000002",
-    "plan_id": "monthly",
-    "plan_name": "Monthly",
-    "start_date": "2026-08-18",
-    "expiry_date": "2026-09-18",
-    "status": "ACTIVE",
-    "payment_status": "PAID",
-    "amount": 5000.0,
-    "notes": "",
-    "created_at": "2026-08-18T18:36:30.177012",
-    "updated_at": "2026-08-18T18:36:30.177012",
-    "person_name": "Ahsan",
-    "cafe_tab_balance": 500.0
-  },
-  {
-    "membership_id": "M-000002",
-    "person_id": "P-000011",
-    "person_name": "Ahmad Saeed",
-    "plan_id": "monthly",
-    "plan_name": "Monthly",
-    "start_date": "2026-08-18",
-    "expiry_date": "2026-09-19",
-    "status": "ACTIVE",
-    "payment_status": "PAID",
-    "amount": 5000.0,
-    "notes": "Auto-Unfrozen & Continued on 2026-08-19 | Auto-Unfrozen at camera check-in on 2026-08-29",
-    "created_at": "2026-08-18T19:22:16.087156",
-    "updated_at": "2026-08-29T18:32:45.656592",
-    "freeze_reason": "",
-    "phone": "03217614627",
-    "frozen_at": "2026-08-29",
-    "unfrozen_at": "2026-08-29"
-  },
-  {
-    "membership_id": "M-000004",
-    "person_id": "P-000022",
-    "plan_id": "daily",
-    "plan_name": "Daily Pass",
-    "start_date": "2026-08-29",
-    "expiry_date": "2026-08-30",
-    "status": "ACTIVE",
-    "payment_status": "PAID",
-    "amount": 300.0,
-    "phone": "",
-    "notes": "",
-    "created_at": "2026-08-29T17:22:28.288519",
-    "updated_at": "2026-08-29T17:31:02.519296",
-    "reminder_count": 1,
-    "last_reminder_sent": "2026-08-29T17:22:33.030615",
-    "freeze_reason": "N/a"
-  }
-];
-  const MEMBERSHIP_PLANS = [
-  {
-    "plan_id": "daily",
-    "name": "Daily Pass",
-    "duration": 1,
-    "duration_unit": "day",
-    "price": 300.0,
-    "description": "1 Day Gym Access Pass"
-  },
-  {
-    "plan_id": "weekly",
-    "name": "Weekly Pass",
-    "duration": 7,
-    "duration_unit": "day",
-    "price": 1500.0,
-    "description": "7 Days Full Access Pass"
-  },
-  {
-    "plan_id": "monthly",
-    "name": "Monthly Standard",
-    "duration": 1,
-    "duration_unit": "month",
-    "price": 5000.0,
-    "description": "Standard 30-Day Gym Membership"
-  },
-  {
-    "plan_id": "3months",
-    "name": "3 Months (Quarterly)",
-    "duration": 3,
-    "duration_unit": "month",
-    "price": 13500.0,
-    "description": "Quarterly Gym Membership (Save 10%)"
-  },
-  {
-    "plan_id": "6months",
-    "name": "6 Months (Half-Yearly)",
-    "duration": 6,
-    "duration_unit": "month",
-    "price": 25000.0,
-    "description": "Half-Year Gym Membership (Save Rs 5,000)"
-  },
-  {
-    "plan_id": "yearly",
-    "name": "1 Year VIP Annual",
-    "duration": 1,
-    "duration_unit": "year",
-    "price": 45000.0,
-    "description": "VIP Full Year Gym Access (Save Rs 15,000)"
-  }
-];
-  const CAFE_PRODUCTS = [
+// Unified In-Memory Store for Serverless State across Requests
+let CAFE_PRODUCTS_STORE = [
   {
     "id": "PROD-101",
     "name": "Double Whey Isolate Shake",
@@ -378,7 +141,7 @@ export default function handler(req, res) {
     "customizable": false
   }
 ];
-  const CAFE_ORDERS = [
+let CAFE_ORDERS_STORE = [
   {
     "id": "ORD-260901-B10F",
     "person_id": "P-000002",
@@ -654,7 +417,7 @@ export default function handler(req, res) {
     "updated_at": "2026-09-01T18:28:29.142377"
   }
 ];
-  const WORKOUT_TEMPLATES = {
+let WORKOUT_TEMPLATES_STORE = {
   "P-000002": [
     {
       "id": "tpl-ef3c349d",
@@ -1777,7 +1540,183 @@ export default function handler(req, res) {
     }
   ]
 };
-  const WORKOUT_LOGS = [
+let DEFAULT_TEMPLATES = [
+  {
+    "id": "tpl-ef3c349d",
+    "name": "UPPER BODY",
+    "description": "Upper body pushing power focused on chest, shoulders and triceps.",
+    "target_muscle": "Chest, Shoulders & Triceps",
+    "icon": "\u26a1",
+    "updated_at": "2026-09-02T18:08:17.250510",
+    "exercises": [
+      {
+        "name": "Barbell Flat Bench Press",
+        "category": "Chest",
+        "target_sets": 2,
+        "target_reps": "8-10",
+        "notes": ""
+      },
+      {
+        "name": "Incline Dumbbell Bench Press",
+        "category": "Chest",
+        "target_sets": 3,
+        "target_reps": "10-12",
+        "notes": ""
+      },
+      {
+        "name": "Flat Dumbbell Press",
+        "category": "Chest",
+        "target_sets": 3,
+        "target_reps": "10-12",
+        "notes": ""
+      }
+    ],
+    "created_at": "2026-09-02T18:06:47.578415"
+  },
+  {
+    "id": "tpl-7fc88bc8",
+    "name": "Pull Day (Back & Biceps)",
+    "description": "Lats width, upper back thickness, and bicep growth.",
+    "target_muscle": "Back, Lats & Biceps",
+    "icon": "\ud83d\ude80",
+    "created_at": "2026-09-02T18:06:47.578526",
+    "exercises": [
+      {
+        "name": "Lat Pulldown (Wide Grip)",
+        "category": "Back",
+        "target_sets": 4,
+        "target_reps": "10-12",
+        "notes": "Pull with elbows to clavicle"
+      },
+      {
+        "name": "Seated Cable Row (Close Grip)",
+        "category": "Back",
+        "target_sets": 4,
+        "target_reps": "10-12",
+        "notes": "Squeeze shoulder blades together"
+      },
+      {
+        "name": "Single-Arm Dumbbell Row",
+        "category": "Back",
+        "target_sets": 3,
+        "target_reps": "10-12",
+        "notes": "Full stretch at bottom"
+      },
+      {
+        "name": "Face Pulls",
+        "category": "Back",
+        "target_sets": 4,
+        "target_reps": "15-20",
+        "notes": "Target rear delts and rotators"
+      },
+      {
+        "name": "EZ-Bar Standing Bicep Curls",
+        "category": "Arms",
+        "target_sets": 4,
+        "target_reps": "10-12",
+        "notes": "Keep elbows pinned at sides"
+      },
+      {
+        "name": "Dumbbell Hammer Curls",
+        "category": "Arms",
+        "target_sets": 3,
+        "target_reps": "12-15",
+        "notes": "Brachialis and grip strength"
+      }
+    ]
+  },
+  {
+    "id": "tpl-7ea3e034",
+    "name": "Legs & Lower Body Power",
+    "description": "Quads, hamstrings, glutes and calves strength development.",
+    "target_muscle": "Quads, Hamstrings & Glutes",
+    "icon": "\ud83e\uddb5",
+    "created_at": "2026-09-02T18:06:47.578566",
+    "exercises": [
+      {
+        "name": "Barbell Back Squats",
+        "category": "Legs",
+        "target_sets": 4,
+        "target_reps": "8-10",
+        "notes": "Hit parallel depth"
+      },
+      {
+        "name": "Leg Press 45\u00b0",
+        "category": "Legs",
+        "target_sets": 4,
+        "target_reps": "10-12",
+        "notes": "Do not lock knees at top"
+      },
+      {
+        "name": "Romanian Deadlift (RDL)",
+        "category": "Legs",
+        "target_sets": 4,
+        "target_reps": "10-12",
+        "notes": "Feel deep hamstring stretch"
+      },
+      {
+        "name": "Seated Leg Extension Machine",
+        "category": "Legs",
+        "target_sets": 3,
+        "target_reps": "12-15",
+        "notes": "1 second hold at peak"
+      },
+      {
+        "name": "Standing Calf Raises",
+        "category": "Legs",
+        "target_sets": 4,
+        "target_reps": "15-20",
+        "notes": "Full plantar extension"
+      }
+    ]
+  },
+  {
+    "id": "tpl-0abcd5eb",
+    "name": "Full Body Conditioning",
+    "description": "High-efficiency compound workout targeting total body strength.",
+    "target_muscle": "Total Body & Core",
+    "icon": "\ud83d\udca5",
+    "created_at": "2026-09-02T18:06:47.578624",
+    "exercises": [
+      {
+        "name": "Conventional Deadlift",
+        "category": "Back",
+        "target_sets": 3,
+        "target_reps": "6-8",
+        "notes": "Brace core tight"
+      },
+      {
+        "name": "Barbell Flat Bench Press",
+        "category": "Chest",
+        "target_sets": 3,
+        "target_reps": "8-10",
+        "notes": "Controlled pressing"
+      },
+      {
+        "name": "Barbell Back Squats",
+        "category": "Legs",
+        "target_sets": 3,
+        "target_reps": "8-10",
+        "notes": "Solid compound depth"
+      },
+      {
+        "name": "Overhead Shoulder Press",
+        "category": "Shoulders",
+        "target_sets": 3,
+        "target_reps": "8-10",
+        "notes": "Strict overhead lock"
+      },
+      {
+        "name": "Hanging Knee / Leg Raises",
+        "category": "Core",
+        "target_sets": 3,
+        "target_reps": "15-20",
+        "notes": "Control hip swing"
+      }
+    ]
+  }
+];
+let WORKOUT_LOGS_STORE = [
   {
     "id": "wlog-260902180924-a828",
     "member_id": "P-000002",
@@ -1867,53 +1806,255 @@ export default function handler(req, res) {
     ]
   }
 ];
-  const PAYMENTS = [
+let USERS_STORE = [
   {
-    "payment_id": "PAY-000001",
-    "membership_id": "M-000004",
-    "amount": 5000.0,
-    "payment_status": "PAID",
-    "payment_date": "2026-08-22",
-    "payment_method": "CASH",
-    "reference_id": "",
-    "notes": "",
-    "created_at": "2026-08-22T19:21:41.625697"
+    "user_id": "USR-001",
+    "username": "admin",
+    "password": "admin123",
+    "name": "Gym Owner (Super Admin)",
+    "role": "ADMIN",
+    "is_active": true,
+    "created_at": "2026-09-01T17:40:00"
   },
   {
-    "payment_id": "PAY-000002",
-    "membership_id": "M-000004",
-    "amount": 5000.0,
-    "payment_status": "PAID",
-    "payment_date": "2026-08-29",
-    "payment_method": "CASH",
-    "reference_id": "",
-    "notes": "",
-    "created_at": "2026-08-29T17:22:05.475992"
+    "user_id": "USR-002",
+    "username": "manager",
+    "password": "manager123",
+    "name": "Ali Supervisor (Manager)",
+    "role": "MANAGER",
+    "is_active": true,
+    "created_at": "2026-09-01T17:40:00"
   },
   {
-    "payment_id": "PAY-000003",
-    "membership_id": "M-000004",
-    "amount": 300.0,
-    "payment_status": "PAID",
-    "payment_date": "2026-08-29",
-    "payment_method": "CASH",
-    "reference_id": "",
-    "notes": "",
-    "created_at": "2026-08-29T17:22:14.802140"
-  },
-  {
-    "payment_id": "PAY-000004",
-    "membership_id": "M-000004",
-    "amount": 300.0,
-    "payment_status": "PAID",
-    "payment_date": "2026-08-29",
-    "payment_method": "CASH",
-    "reference_id": "",
-    "notes": "",
-    "created_at": "2026-08-29T17:22:28.288519"
+    "user_id": "USR-003",
+    "username": "reception",
+    "password": "reception123",
+    "name": "Sara Counter (Receptionist)",
+    "role": "RECEPTIONIST",
+    "is_active": true,
+    "created_at": "2026-09-01T17:40:00"
   }
 ];
-  const ATTENDANCE = [
+let REGISTERED_PEOPLE = [
+  {
+    "id": "P-000002",
+    "name": "Ahsan",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000003",
+    "name": "Jawad",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000004",
+    "name": "Abdul Hannan",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000005",
+    "name": "Hassaan",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000006",
+    "name": "Furqan",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000009",
+    "name": "Usman Bhai",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:00:00"
+  },
+  {
+    "id": "P-000010",
+    "name": "Husnain",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 17:37:03"
+  },
+  {
+    "id": "P-000011",
+    "name": "Ahmad Saeed",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-19 19:44:14"
+  },
+  {
+    "id": "P-000014",
+    "name": "Ahmad Riaz",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-25 18:02:57"
+  },
+  {
+    "id": "P-000016",
+    "name": "Junaid",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-25 18:48:42"
+  },
+  {
+    "id": "P-000017",
+    "name": "Sir Saleem",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-25 18:48:43"
+  },
+  {
+    "id": "P-000019",
+    "name": "Husnain Sarwar",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-25 19:37:17"
+  },
+  {
+    "id": "P-000020",
+    "name": "Ahmad bin saeed",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-25 19:48:56"
+  },
+  {
+    "id": "P-000022",
+    "name": "Sir Imran",
+    "phone": "0300-1234567",
+    "email": "",
+    "status": "active",
+    "registered_at": "2026-08-29 17:11:22"
+  }
+];
+let MEMBERSHIPS = [
+  {
+    "membership_id": "M-000003",
+    "person_id": "P-000002",
+    "plan_id": "monthly",
+    "plan_name": "Monthly",
+    "start_date": "2026-08-18",
+    "expiry_date": "2026-09-18",
+    "status": "ACTIVE",
+    "payment_status": "PAID",
+    "amount": 5000.0,
+    "notes": "",
+    "created_at": "2026-08-18T18:36:30.177012",
+    "updated_at": "2026-08-18T18:36:30.177012",
+    "person_name": "Ahsan",
+    "cafe_tab_balance": 500.0
+  },
+  {
+    "membership_id": "M-000002",
+    "person_id": "P-000011",
+    "person_name": "Ahmad Saeed",
+    "plan_id": "monthly",
+    "plan_name": "Monthly",
+    "start_date": "2026-08-18",
+    "expiry_date": "2026-09-19",
+    "status": "ACTIVE",
+    "payment_status": "PAID",
+    "amount": 5000.0,
+    "notes": "Auto-Unfrozen & Continued on 2026-08-19 | Auto-Unfrozen at camera check-in on 2026-08-29",
+    "created_at": "2026-08-18T19:22:16.087156",
+    "updated_at": "2026-08-29T18:32:45.656592",
+    "freeze_reason": "",
+    "phone": "03217614627",
+    "frozen_at": "2026-08-29",
+    "unfrozen_at": "2026-08-29"
+  },
+  {
+    "membership_id": "M-000004",
+    "person_id": "P-000022",
+    "plan_id": "daily",
+    "plan_name": "Daily Pass",
+    "start_date": "2026-08-29",
+    "expiry_date": "2026-08-30",
+    "status": "ACTIVE",
+    "payment_status": "PAID",
+    "amount": 300.0,
+    "phone": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:28.288519",
+    "updated_at": "2026-08-29T17:31:02.519296",
+    "reminder_count": 1,
+    "last_reminder_sent": "2026-08-29T17:22:33.030615",
+    "freeze_reason": "N/a"
+  }
+];
+let MEMBERSHIP_PLANS = [
+  {
+    "plan_id": "daily",
+    "name": "Daily Pass",
+    "duration": 1,
+    "duration_unit": "day",
+    "price": 300.0,
+    "description": "1 Day Gym Access Pass"
+  },
+  {
+    "plan_id": "weekly",
+    "name": "Weekly Pass",
+    "duration": 7,
+    "duration_unit": "day",
+    "price": 1500.0,
+    "description": "7 Days Full Access Pass"
+  },
+  {
+    "plan_id": "monthly",
+    "name": "Monthly Standard",
+    "duration": 1,
+    "duration_unit": "month",
+    "price": 5000.0,
+    "description": "Standard 30-Day Gym Membership"
+  },
+  {
+    "plan_id": "3months",
+    "name": "3 Months (Quarterly)",
+    "duration": 3,
+    "duration_unit": "month",
+    "price": 13500.0,
+    "description": "Quarterly Gym Membership (Save 10%)"
+  },
+  {
+    "plan_id": "6months",
+    "name": "6 Months (Half-Yearly)",
+    "duration": 6,
+    "duration_unit": "month",
+    "price": 25000.0,
+    "description": "Half-Year Gym Membership (Save Rs 5,000)"
+  },
+  {
+    "plan_id": "yearly",
+    "name": "1 Year VIP Annual",
+    "duration": 1,
+    "duration_unit": "year",
+    "price": 45000.0,
+    "description": "VIP Full Year Gym Access (Save Rs 15,000)"
+  }
+];
+let ATTENDANCE = [
   {
     "date": "2026-08-17",
     "person_id": "P-000010",
@@ -2206,7 +2347,7 @@ export default function handler(req, res) {
     "camera_name": "Webcam"
   }
 ];
-  const VISITS = [
+let VISITS = [
   {
     "person_id": "P-000010",
     "name": "Husnain",
@@ -2664,37 +2805,227 @@ export default function handler(req, res) {
     "camera_name": "Webcam"
   }
 ];
-  const USERS = [
+let PAYMENTS = [
   {
-    "user_id": "USR-001",
-    "username": "admin",
-    "password": "admin123",
-    "name": "Gym Owner (Super Admin)",
-    "role": "ADMIN",
-    "is_active": true,
-    "created_at": "2026-09-01T17:40:00"
+    "payment_id": "PAY-000001",
+    "membership_id": "M-000004",
+    "amount": 5000.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-22",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-22T19:21:41.625697"
   },
   {
-    "user_id": "USR-002",
-    "username": "manager",
-    "password": "manager123",
-    "name": "Ali Supervisor (Manager)",
-    "role": "MANAGER",
-    "is_active": true,
-    "created_at": "2026-09-01T17:40:00"
+    "payment_id": "PAY-000002",
+    "membership_id": "M-000004",
+    "amount": 5000.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:05.475992"
   },
   {
-    "user_id": "USR-003",
-    "username": "reception",
-    "password": "reception123",
-    "name": "Sara Counter (Receptionist)",
-    "role": "RECEPTIONIST",
-    "is_active": true,
-    "created_at": "2026-09-01T17:40:00"
+    "payment_id": "PAY-000003",
+    "membership_id": "M-000004",
+    "amount": 300.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:14.802140"
+  },
+  {
+    "payment_id": "PAY-000004",
+    "membership_id": "M-000004",
+    "amount": 300.0,
+    "payment_status": "PAID",
+    "payment_date": "2026-08-29",
+    "payment_method": "CASH",
+    "reference_id": "",
+    "notes": "",
+    "created_at": "2026-08-29T17:22:28.288519"
+  }
+];
+let STANDARD_EXERCISES = [
+  {
+    "id": "std-1",
+    "name": "Barbell Flat Bench Press",
+    "category": "Chest",
+    "equipment": "Barbell",
+    "target": "Mid Chest",
+    "default_sets": 4,
+    "default_reps": "8-10"
+  },
+  {
+    "id": "std-2",
+    "name": "Incline Dumbbell Bench Press",
+    "category": "Chest",
+    "equipment": "Dumbbells",
+    "target": "Upper Chest",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-3",
+    "name": "Flat Dumbbell Press",
+    "category": "Chest",
+    "equipment": "Dumbbells",
+    "target": "Mid Chest",
+    "default_sets": 3,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-7",
+    "name": "Conventional Deadlift",
+    "category": "Back",
+    "equipment": "Barbell",
+    "target": "Lower Back & Posterior Chain",
+    "default_sets": 4,
+    "default_reps": "5-8"
+  },
+  {
+    "id": "std-8",
+    "name": "Lat Pulldown (Wide Grip)",
+    "category": "Back",
+    "equipment": "Cable Machine",
+    "target": "Lats Width",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-9",
+    "name": "Seated Cable Row (Close Grip)",
+    "category": "Back",
+    "equipment": "Cable Machine",
+    "target": "Mid Back & Rhomboids",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-11",
+    "name": "Single-Arm Dumbbell Row",
+    "category": "Back",
+    "equipment": "Dumbbells",
+    "target": "Lower Lats",
+    "default_sets": 3,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-13",
+    "name": "Face Pulls",
+    "category": "Back",
+    "equipment": "Rope Cable",
+    "target": "Rear Delts & Upper Back",
+    "default_sets": 4,
+    "default_reps": "15-20"
+  },
+  {
+    "id": "std-14",
+    "name": "Barbell Back Squats",
+    "category": "Legs",
+    "equipment": "Barbell",
+    "target": "Quads & Glutes",
+    "default_sets": 4,
+    "default_reps": "8-10"
+  },
+  {
+    "id": "std-15",
+    "name": "Leg Press 45\u00b0",
+    "category": "Legs",
+    "equipment": "Machine",
+    "target": "Quad Sweep",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-16",
+    "name": "Romanian Deadlift (RDL)",
+    "category": "Legs",
+    "equipment": "Barbell / Dumbbell",
+    "target": "Hamstrings & Glutes",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-17",
+    "name": "Seated Leg Extension Machine",
+    "category": "Legs",
+    "equipment": "Machine",
+    "target": "Quad Teardrop",
+    "default_sets": 3,
+    "default_reps": "12-15"
+  },
+  {
+    "id": "std-20",
+    "name": "Standing Calf Raises",
+    "category": "Legs",
+    "equipment": "Machine / Dumbbells",
+    "target": "Gastrocnemius",
+    "default_sets": 4,
+    "default_reps": "15-20"
+  },
+  {
+    "id": "std-23",
+    "name": "Overhead Shoulder Press",
+    "category": "Shoulders",
+    "equipment": "Barbell",
+    "target": "Anterior Delts & Strength",
+    "default_sets": 4,
+    "default_reps": "8-10"
+  },
+  {
+    "id": "std-29",
+    "name": "EZ-Bar Standing Bicep Curls",
+    "category": "Arms",
+    "equipment": "EZ Bar",
+    "target": "Biceps Peak",
+    "default_sets": 4,
+    "default_reps": "10-12"
+  },
+  {
+    "id": "std-31",
+    "name": "Dumbbell Hammer Curls",
+    "category": "Arms",
+    "equipment": "Dumbbells",
+    "target": "Brachialis & Forearms",
+    "default_sets": 3,
+    "default_reps": "12-15"
+  },
+  {
+    "id": "std-36",
+    "name": "Hanging Knee / Leg Raises",
+    "category": "Core",
+    "equipment": "Pull-up Bar",
+    "target": "Lower Abs",
+    "default_sets": 4,
+    "default_reps": "15-20"
   }
 ];
 
-  // 1. Health & System Status
+export default function handler(req, res) {
+  // Global CORS Headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader(
+    'Access-Control-Allow-Headers',
+    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization, X-User-Role, X-User-Id'
+  );
+
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+
+  const url = req.url || '';
+  const method = req.method;
+
+  // 1. Health Status
   if (url.includes('/status') && !url.includes('/camera/status') && !url.includes('/order')) {
     return res.status(200).json({
       status: 'online',
@@ -2722,11 +3053,11 @@ export default function handler(req, res) {
   if (url.includes('/camera/source') || url.includes('/camera/start') || url.includes('/camera/stop') || url.includes('/register/')) {
     return res.status(200).json({
       success: true,
-      message: 'Camera action completed successfully'
+      message: 'Camera setting updated'
     });
   }
 
-  // 3. State Endpoint (Real-time Live Feed)
+  // 3. State Endpoint (Real-time Live Polling)
   if (url.includes('/state')) {
     return res.status(200).json({
       camera: false,
@@ -2777,14 +3108,14 @@ export default function handler(req, res) {
     });
   }
 
-  // 5. Authentication & Staff Management
+  // 5. Authentication
   if (url.includes('/auth/login') || url === '/api/login') {
     if (method === 'POST') {
       const { username, password } = req.body || {};
       const cleanUser = (username || '').trim().toLowerCase();
 
-      // Check Staff in USERS
-      const found = USERS.find(u => (u.username || '').toLowerCase() === cleanUser);
+      // Check Staff
+      const found = USERS_STORE.find(u => (u.username || '').toLowerCase() === cleanUser);
       if (found) {
         if (found.password === (password || '').trim()) {
           return res.status(200).json({
@@ -2814,6 +3145,7 @@ export default function handler(req, res) {
     }
   }
 
+  // 6. Staff & Roles Management
   if (url.includes('/auth/users') || url.includes('/staff')) {
     if (method === 'POST') {
       const newUser = {
@@ -2821,35 +3153,157 @@ export default function handler(req, res) {
         ...(req.body || {}),
         is_active: true
       };
+      USERS_STORE.push(newUser);
       return res.status(201).json({ status: 'success', user: newUser });
     }
-    return res.status(200).json({ users: USERS });
-  }
-
-  // 6. People / Members Directory
-  if (url.includes('/people')) {
-    if (url.includes('/profile') || url.includes('/face-samples')) {
-      return res.status(200).json([]);
+    if (method === 'DELETE') {
+      const parts = url.split('/');
+      const delId = parts[parts.length - 1];
+      USERS_STORE = USERS_STORE.filter(u => u.user_id !== delId && u.id !== delId);
+      return res.status(200).json({ status: 'success', message: 'Staff user deleted' });
     }
-    return res.status(200).json(REGISTERED_PEOPLE);
+    return res.status(200).json({ status: 'success', users: USERS_STORE });
   }
 
-  // 7. Attendance & Visits
-  if (url.includes('/attendance')) {
-    if (url.includes('/today')) {
-      return res.status(200).json(ATTENDANCE.slice(-10).reverse());
+  // 7. Cafe Products, Orders & POS Management
+  if (url.includes('/cafe/products')) {
+    if (method === 'POST') {
+      const body = req.body || {};
+      const newProd = {
+        id: `PROD-${Date.now().toString().slice(-4)}`,
+        name: body.name || 'New Cafe Item',
+        category: body.category || 'SHAKES',
+        price: Number(body.price || 350),
+        cost_price: Number(body.cost_price || 200),
+        calories: Number(body.calories || 200),
+        protein_g: Number(body.protein_g || 25),
+        stock: Number(body.stock || 20),
+        min_stock_alert: Number(body.min_stock_alert || 5),
+        description: body.description || '',
+        customizable: !!body.customizable,
+        is_active: true
+      };
+      CAFE_PRODUCTS_STORE.unshift(newProd);
+      return res.status(201).json({ status: 'success', product: newProd, products: CAFE_PRODUCTS_STORE });
     }
-    return res.status(200).json(ATTENDANCE);
-  }
-
-  if (url.includes('/visits')) {
-    if (url.includes('/today')) {
-      return res.status(200).json(VISITS.slice(-10).reverse());
+    if (method === 'PUT') {
+      const parts = url.split('/');
+      const prodId = parts[parts.length - 1];
+      const body = req.body || {};
+      CAFE_PRODUCTS_STORE = CAFE_PRODUCTS_STORE.map(p => p.id === prodId ? { ...p, ...body } : p);
+      return res.status(200).json({ status: 'success', products: CAFE_PRODUCTS_STORE });
     }
-    return res.status(200).json(VISITS);
+    if (method === 'DELETE') {
+      const parts = url.split('/');
+      const prodId = parts[parts.length - 1];
+      CAFE_PRODUCTS_STORE = CAFE_PRODUCTS_STORE.filter(p => p.id !== prodId);
+      return res.status(200).json({ status: 'success', message: 'Product deleted', products: CAFE_PRODUCTS_STORE });
+    }
+    return res.status(200).json({ status: 'success', count: CAFE_PRODUCTS_STORE.length, products: CAFE_PRODUCTS_STORE });
   }
 
-  // 8. Memberships & Plans
+  if (url.includes('/cafe/orders')) {
+    if (method === 'POST') {
+      const body = req.body || {};
+      const newOrder = {
+        id: `ord-${Date.now()}`,
+        ...body,
+        order_status: body.order_status || 'PENDING',
+        payment_status: body.payment_status || 'PAID',
+        created_at: new Date().toISOString()
+      };
+      CAFE_ORDERS_STORE.unshift(newOrder);
+      return res.status(201).json({ status: 'success', order: newOrder, orders: CAFE_ORDERS_STORE });
+    }
+    return res.status(200).json({ status: 'success', count: CAFE_ORDERS_STORE.length, orders: CAFE_ORDERS_STORE });
+  }
+
+  if (url.includes('/cafe/analytics')) {
+    return res.status(200).json({
+      total_revenue: 45600,
+      total_orders: CAFE_ORDERS_STORE.length || 15,
+      top_products: [
+        { name: 'Double Whey Isolate Shake', sold: 45, revenue: 20250 },
+        { name: 'C4 Pre-Workout Blast', sold: 30, revenue: 7500 },
+        { name: 'Chocolate Chip Protein Bar', sold: 25, revenue: 8000 }
+      ]
+    });
+  }
+
+  // 8. Workout Templates & Exercises
+  if (url.includes('/workout/templates')) {
+    const parts = url.split('/');
+    const memId = parts[parts.length - 1];
+    
+    if (method === 'POST') {
+      const body = req.body || {};
+      const newTpl = {
+        id: `tpl-${Date.now().toString(16)}`,
+        name: body.name || 'New Routine',
+        description: body.description || '',
+        target_muscle: body.target_muscle || 'General',
+        icon: body.icon || '⚡',
+        exercises: body.exercises || [],
+        created_at: new Date().toISOString()
+      };
+      DEFAULT_TEMPLATES.push(newTpl);
+      return res.status(201).json({ status: 'success', template: newTpl, templates: DEFAULT_TEMPLATES });
+    }
+
+    if (method === 'DELETE') {
+      const delTplId = parts[parts.length - 1];
+      DEFAULT_TEMPLATES = DEFAULT_TEMPLATES.filter(t => t.id !== delTplId);
+      return res.status(200).json({ status: 'success', message: 'Template deleted', templates: DEFAULT_TEMPLATES });
+    }
+
+    // Check member-specific templates or fallback to default full templates list
+    let templatesList = DEFAULT_TEMPLATES;
+    if (memId && WORKOUT_TEMPLATES_STORE[memId]) {
+      templatesList = WORKOUT_TEMPLATES_STORE[memId];
+    }
+    return res.status(200).json({
+      status: 'success',
+      count: templatesList.length,
+      templates: templatesList
+    });
+  }
+
+  if (url.includes('/workout/exercises')) {
+    return res.status(200).json({
+      status: 'success',
+      count: STANDARD_EXERCISES.length,
+      exercises: STANDARD_EXERCISES
+    });
+  }
+
+  if (url.includes('/workout/logs') || url.includes('/workout/admin/all-logs')) {
+    if (method === 'POST') {
+      const body = req.body || {};
+      const newLog = {
+        id: `log-${Date.now()}`,
+        ...body,
+        created_at: new Date().toISOString()
+      };
+      WORKOUT_LOGS_STORE.unshift(newLog);
+      return res.status(201).json({ status: 'success', log: newLog, logs: WORKOUT_LOGS_STORE });
+    }
+    return res.status(200).json({
+      status: 'success',
+      count: WORKOUT_LOGS_STORE.length,
+      logs: WORKOUT_LOGS_STORE
+    });
+  }
+
+  if (url.includes('/workout/dashboard')) {
+    return res.status(200).json({
+      total_workouts: 14,
+      streak_days: 5,
+      calories_burned: 5400,
+      favorite_exercise: 'Barbell Flat Bench Press'
+    });
+  }
+
+  // 9. Memberships & Plans
   if (url.includes('/memberships/plans') || url.includes('/membership_plans')) {
     return res.status(200).json(MEMBERSHIP_PLANS.length ? MEMBERSHIP_PLANS : [
       { plan_id: 'daily', name: 'Daily Pass', duration: 1, duration_unit: 'day', price: 300 },
@@ -2879,79 +3333,35 @@ export default function handler(req, res) {
     return res.status(200).json(MEMBERSHIPS);
   }
 
-  // 9. Cafe Products, Orders & Analytics
-  if (url.includes('/cafe/products')) {
-    return res.status(200).json(CAFE_PRODUCTS);
-  }
-
-  if (url.includes('/cafe/orders')) {
-    if (method === 'POST') {
-      const newOrder = {
-        id: `ord-${Date.now()}`,
-        ...(req.body || {}),
-        status: 'PENDING',
-        created_at: new Date().toISOString()
-      };
-      return res.status(201).json(newOrder);
+  // 10. People / Members Directory
+  if (url.includes('/people')) {
+    if (url.includes('/profile') || url.includes('/face-samples')) {
+      return res.status(200).json([]);
     }
-    return res.status(200).json(CAFE_ORDERS);
+    return res.status(200).json(REGISTERED_PEOPLE);
   }
 
-  if (url.includes('/cafe/analytics')) {
-    return res.status(200).json({
-      total_revenue: 45600,
-      total_orders: CAFE_ORDERS.length || 15,
-      top_products: [
-        { name: 'Whey Protein Shake', sold: 45, revenue: 20250 },
-        { name: 'Pre-Workout Shot', sold: 30, revenue: 10500 },
-        { name: 'BCAA Hydration', sold: 25, revenue: 7500 }
-      ]
-    });
+  // 11. Attendance & Visits
+  if (url.includes('/attendance')) {
+    if (url.includes('/today')) {
+      return res.status(200).json(ATTENDANCE.slice(-10).reverse());
+    }
+    return res.status(200).json(ATTENDANCE);
   }
 
-  // 10. Workout Templates, Exercises & Logs
-  if (url.includes('/workout/templates')) {
-    // Return either array of templates or member specific dict
-    const tplList = Object.values(WORKOUT_TEMPLATES);
-    return res.status(200).json(tplList.length ? tplList : [
-      { id: 'tpl-1', name: 'Push Day (Chest, Shoulders & Triceps)', icon: '⚡', target_muscle: 'Chest, Shoulders, Triceps', exercises: [] },
-      { id: 'tpl-2', name: 'Pull Day (Back & Biceps)', icon: '🚀', target_muscle: 'Back & Biceps', exercises: [] },
-      { id: 'tpl-3', name: 'Legs & Core Power', icon: '🔥', target_muscle: 'Quads, Hamstrings & Abs', exercises: [] }
-    ]);
+  if (url.includes('/visits')) {
+    if (url.includes('/today')) {
+      return res.status(200).json(VISITS.slice(-10).reverse());
+    }
+    return res.status(200).json(VISITS);
   }
 
-  if (url.includes('/workout/logs')) {
-    return res.status(200).json(WORKOUT_LOGS);
-  }
-
-  if (url.includes('/workout/exercises')) {
-    return res.status(200).json([
-      { id: 'ex-1', name: 'Barbell Bench Press', muscle: 'Chest' },
-      { id: 'ex-2', name: 'Incline Dumbbell Press', muscle: 'Upper Chest' },
-      { id: 'ex-3', name: 'Overhead Shoulder Press', muscle: 'Shoulders' },
-      { id: 'ex-4', name: 'Lat Pulldown', muscle: 'Back' },
-      { id: 'ex-5', name: 'Barbell Deadlift', muscle: 'Back & Legs' },
-      { id: 'ex-6', name: 'Bicep Barbell Curl', muscle: 'Biceps' },
-      { id: 'ex-7', name: 'Barbell Squat', muscle: 'Quads' },
-      { id: 'ex-8', name: 'Leg Press', muscle: 'Quads & Glutes' }
-    ]);
-  }
-
-  if (url.includes('/workout/dashboard')) {
-    return res.status(200).json({
-      total_workouts: 12,
-      streak_days: 4,
-      calories_burned: 4800,
-      favorite_exercise: 'Barbell Bench Press'
-    });
-  }
-
-  // 11. Activity & Audit Logs
+  // 12. Activity Logs
   if (url.includes('/activity') || url.includes('/events')) {
     return res.status(200).json([
       { id: 1, action: 'User Login', user: 'admin', timestamp: new Date().toISOString(), details: 'Admin logged in' },
       { id: 2, action: 'Face Verified', user: 'Husnain', timestamp: new Date().toISOString(), details: 'Door Unlocked' },
-      { id: 3, action: 'Cafe Order Placed', user: 'Ahsan', timestamp: new Date().toISOString(), details: 'Whey Protein Shake' }
+      { id: 3, action: 'Cafe Item Sold', user: 'Ahsan', timestamp: new Date().toISOString(), details: 'Double Whey Isolate Shake' }
     ]);
   }
 

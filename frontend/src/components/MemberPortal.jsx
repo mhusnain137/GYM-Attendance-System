@@ -184,10 +184,18 @@ function MemberPortal() {
   const fetchMemberTemplates = async (memId) => {
     try {
       const res = await axios.get(`/api/workout/templates/${memId}`);
-      if (res.data && res.data.templates) {
-        setTemplates(res.data.templates);
-        if (res.data.templates.length > 0 && !activeSession) {
-          const firstTpl = res.data.templates[0];
+      let list = [];
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          list = res.data;
+        } else if (res.data.templates && Array.isArray(res.data.templates)) {
+          list = res.data.templates;
+        }
+      }
+      if (list.length > 0) {
+        setTemplates(list);
+        if (!activeSession) {
+          const firstTpl = list[0];
           setSelectedTemplateId(firstTpl.id);
           initActiveSession(firstTpl);
         }
@@ -200,8 +208,12 @@ function MemberPortal() {
   const fetchExerciseLibrary = async (memId) => {
     try {
       const res = await axios.get(`/api/workout/exercises?member_id=${memId}`);
-      if (res.data && res.data.exercises) {
-        setExerciseLibrary(res.data.exercises);
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setExerciseLibrary(res.data);
+        } else if (res.data.exercises && Array.isArray(res.data.exercises)) {
+          setExerciseLibrary(res.data.exercises);
+        }
       }
     } catch (e) {
       console.error('Error fetching exercise library:', e);
@@ -211,8 +223,12 @@ function MemberPortal() {
   const fetchWorkoutLogs = async (memId) => {
     try {
       const res = await axios.get(`/api/workout/logs/${memId}`);
-      if (res.data && res.data.logs) {
-        setWorkoutLogs(res.data.logs);
+      if (res.data) {
+        if (Array.isArray(res.data)) {
+          setWorkoutLogs(res.data);
+        } else if (res.data.logs && Array.isArray(res.data.logs)) {
+          setWorkoutLogs(res.data.logs);
+        }
       }
     } catch (e) {
       console.error('Error fetching workout logs:', e);
