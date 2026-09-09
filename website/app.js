@@ -197,11 +197,11 @@ function toggleAudio() {
   const btn = document.getElementById('audio-toggle-btn');
 
   if (audioEnabled) {
-    if (label) label.innerText = 'ON';
+    if (label) label.innerText = 'Sound: ON';
     if (btn) btn.classList.remove('muted');
     playChime('unlock');
   } else {
-    if (label) label.innerText = 'OFF';
+    if (label) label.innerText = 'Sound: OFF';
     if (btn) btn.classList.add('muted');
   }
 }
@@ -215,7 +215,7 @@ function playChime(type) {
     const now = ctx.currentTime;
 
     if (type === 'unlock') {
-      // Pleasant dual-frequency door unlock chime (E5 -> A5) + relay click
+      // Clean corporate access chime (E5 -> A5) + relay click
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
@@ -238,7 +238,7 @@ function playChime(type) {
       osc2.start(now + 0.1);
       osc2.stop(now + 0.62);
 
-      // Low turnstile solenoid mechanical pulse
+      // Turnstile solenoid mechanical tick
       const clickOsc = ctx.createOscillator();
       const clickGain = ctx.createGain();
       clickOsc.type = 'triangle';
@@ -252,7 +252,7 @@ function playChime(type) {
       clickOsc.stop(now + 0.07);
 
     } else if (type === 'warning') {
-      // Subtle double warning buzzer
+      // Subtle double alert pulse
       [0, 0.13].forEach(delay => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
@@ -267,7 +267,7 @@ function playChime(type) {
       });
 
     } else if (type === 'danger') {
-      // Urgent denial alarm
+      // Crisp security lockout tone
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sawtooth';
@@ -281,7 +281,7 @@ function playChime(type) {
       osc.stop(now + 0.4);
 
     } else if (type === 'sync') {
-      // Soft high-tech sync chime
+      // Network sync chime
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
@@ -294,7 +294,7 @@ function playChime(type) {
       osc.stop(now + 0.2);
     }
   } catch (e) {
-    console.debug('Web Audio API initialized on user interaction');
+    console.debug('Audio interaction initialized');
   }
 }
 
@@ -316,7 +316,6 @@ function simulateScan(type) {
 
   if (!scanBox || !gateIndicator) return;
 
-  // Reset indicator styles
   gateIndicator.className = 'sim-gate-indicator';
   scanBox.style.borderColor = 'rgba(59, 130, 246, 0.5)';
   scanBox.style.boxShadow = 'none';
@@ -328,12 +327,12 @@ function simulateScan(type) {
     scanBox.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.4)';
     scanTag.style.background = '#064e3b';
     scanTag.style.color = '#34d399';
-    scanTag.innerText = '✓ P-000002 • Ali Hassan (99.4% Biometric Conf.)';
+    scanTag.innerText = 'Verified: Ali Hassan (ID: P-000002 • 99.4% Conf.)';
 
     gateIndicator.classList.add('unlocked');
-    gateIcon.innerText = '🚪🔓';
+    gateIcon.innerText = '🔓';
     gateText.innerText = 'GATE UNLOCKED — ACCESS GRANTED (3.0s)';
-    logBar.innerHTML = '⚡ <strong style="color:#34d399;">RELAY TRIGGERED:</strong> Turnstile barrier unlocked. Member "Ali Hassan" active pass verified. Real-time attendance logged.';
+    logBar.innerHTML = '<strong style="color:#059669;">RELAY TRIGGERED:</strong> Turnstile barrier unlocked. Member "Ali Hassan" active pass verified. Real-time attendance logged.';
 
     simResetTimer = setTimeout(() => {
       simulateScan('reset');
@@ -342,16 +341,16 @@ function simulateScan(type) {
   } else if (type === 'roaming_denied') {
     playChime('warning');
 
-    scanBox.style.borderColor = '#8b5cf6';
-    scanBox.style.boxShadow = '0 0 16px rgba(139, 92, 246, 0.4)';
-    scanTag.style.background = '#4c1d95';
-    scanTag.style.color = '#e9d5ff';
-    scanTag.innerText = '⚠️ P-000041 • Bilal Tariq (Single Branch Pass)';
+    scanBox.style.borderColor = '#6366f1';
+    scanBox.style.boxShadow = '0 0 16px rgba(99, 102, 241, 0.4)';
+    scanTag.style.background = '#312e81';
+    scanTag.style.color = '#c7d2fe';
+    scanTag.innerText = 'Mismatch: Bilal Tariq (Gulberg Facility Pass)';
 
     gateIndicator.classList.add('locked-denied');
-    gateIcon.innerText = '🚫🔒';
-    gateText.innerText = 'DOOR LOCKED — ROAMING DENIED';
-    logBar.innerHTML = '🚫 <strong style="color:#ef4444;">SECURITY ALERT:</strong> Access Denied. Member registered at Gulberg Branch. Pro/Max Roaming Pass required for Main Gate.';
+    gateIcon.innerText = '🔒';
+    gateText.innerText = 'ACCESS DENIED — ROAMING MISMATCH';
+    logBar.innerHTML = '<strong style="color:#dc2626;">SECURITY NOTICE:</strong> Access Denied. Member registered at Gulberg Branch. Pro/Enterprise Roaming Pass required for Main Gate.';
 
   } else if (type === 'expired_trial') {
     playChime('danger');
@@ -360,24 +359,23 @@ function simulateScan(type) {
     scanBox.style.boxShadow = '0 0 16px rgba(239, 68, 68, 0.4)';
     scanTag.style.background = '#7f1d1d';
     scanTag.style.color = '#fca5a5';
-    scanTag.innerText = '🚨 Guest-918 • Hamza (Trial 5/5 Days Used)';
+    scanTag.innerText = 'Limit Reached: Guest Hamza (Trial 5/5 Days Used)';
 
     gateIndicator.classList.add('locked-denied');
-    gateIcon.innerText = '🚫🔒';
-    gateText.innerText = 'DOOR LOCKED — 5-DAY TRIAL EXPIRED';
-    logBar.innerHTML = '⚠️ <strong style="color:#ef4444;">TRIAL EXPIRED:</strong> Free guest visited 5 days. Turnstile barrier locked. Front desk membership purchase required.';
+    gateIcon.innerText = '🔒';
+    gateText.innerText = 'ACCESS DENIED — 5-DAY TRIAL EXPIRED';
+    logBar.innerHTML = '<strong style="color:#dc2626;">ACCESS RESTRICTED:</strong> Free trial limit reached (5 days). Turnstile locked. Front desk membership purchase required.';
 
   } else {
-    // Reset state
     scanBox.style.borderColor = 'rgba(59, 130, 246, 0.5)';
     scanBox.style.boxShadow = 'none';
-    scanTag.style.background = 'rgba(15, 23, 42, 0.9)';
+    scanTag.style.background = 'rgba(15, 23, 42, 0.92)';
     scanTag.style.color = '#cbd5e1';
-    scanTag.innerText = 'Waiting for face...';
+    scanTag.innerText = 'Monitoring stream...';
 
-    gateIcon.innerText = '🚪🔒';
+    gateIcon.innerText = '🔒';
     gateText.innerText = 'GATE SECURED & LOCKED';
-    logBar.innerHTML = 'ℹ️ System Status: Ready. Electronic turnstile relays connected.';
+    logBar.innerHTML = 'System Status: Operational. Biometric access relays active.';
   }
 }
 
