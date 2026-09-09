@@ -1,34 +1,75 @@
 // ============================================================
-// TITAN GYM OS — SAAS PROMOTIONAL WEBSITE JAVASCRIPT
-// Interactive Engine: Turnstile Audio Simulator • Currency Engine (PKR/USD)
-// Multi-Branch City Network • ROI Calculator • Comparison Filter • Demo Leads
+// TITAN GYM OS — ENTERPRISE B2B SAAS JAVASCRIPT ENGINE
+// Features: Turnstile CCTV Audio Simulator • Dual Currency Engine (PKR/USD)
+// Dynamic ROI Engine • Multi-Branch Network Pulse • Comparison Filter • Mobile Drawer
 // ============================================================
 
 let isAnnualBilling = false;
 let currentCurrency = 'PKR';
 let audioEnabled = true;
 let audioCtx = null;
+let simResetTimer = null;
 
-// Pricing Configuration (PKR & USD)
+// Enterprise Pricing Matrix
 const PRICING_CONFIG = {
   PKR: {
     symbol: 'PKR',
     displayPrefix: 'Rs. ',
     basic: { monthly: 14999, annual: 11999, annualYear: 143988 },
     pro:   { monthly: 29999, annual: 23999, annualYear: 287988 },
-    max:   { monthly: 54999, annual: 43999, annualYear: 527988 }
+    max:   { monthly: 54999, annual: 43999, annualYear: 527988 },
+    feeSlider: { min: 1500, max: 25000, step: 500, defaultVal: 4500, minLabel: 'Rs. 1,500', maxLabel: 'Rs. 25,000+' }
   },
   USD: {
     symbol: 'USD',
     displayPrefix: '$',
     basic: { monthly: 49, annual: 39, annualYear: 468 },
     pro:   { monthly: 99, annual: 79, annualYear: 948 },
-    max:   { monthly: 179, annual: 149, annualYear: 1788 }
+    max:   { monthly: 179, annual: 149, annualYear: 1788 },
+    feeSlider: { min: 15, max: 150, step: 5, defaultVal: 45, minLabel: '$15', maxLabel: '$150+' }
   }
 };
 
 // ============================================================
-// 1. CURRENCY SWITCHER (PKR / USD)
+// 1. MOBILE NAVIGATION DRAWER
+// ============================================================
+function toggleMobileMenu() {
+  const drawer = document.getElementById('mobile-nav-drawer');
+  const overlay = document.getElementById('mobile-drawer-overlay');
+  if (!drawer || !overlay) return;
+
+  const isOpen = drawer.classList.contains('open');
+  if (isOpen) {
+    drawer.classList.remove('open');
+    overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  } else {
+    drawer.classList.add('open');
+    overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+// ============================================================
+// 2. REAL-TIME CCTV DIGITAL CLOCK
+// ============================================================
+function initSimClock() {
+  const clockEl = document.getElementById('sim-live-clock');
+  function update() {
+    if (clockEl) {
+      const d = new Date();
+      const h = String(d.getHours()).padStart(2, '0');
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const s = String(d.getSeconds()).padStart(2, '0');
+      clockEl.innerText = `${h}:${m}:${s}`;
+    }
+  }
+  update();
+  setInterval(update, 1000);
+}
+
+// ============================================================
+// 3. CURRENCY SWITCHER (PKR / USD)
 // ============================================================
 function setCurrency(curr) {
   if (!PRICING_CONFIG[curr]) return;
@@ -45,7 +86,7 @@ function setCurrency(curr) {
     if (btnPkr) btnPkr.classList.remove('active');
   }
 
-  // Update symbols
+  // Update Symbols in cards
   const symBasic = document.getElementById('curr-symbol-basic');
   const symPro = document.getElementById('curr-symbol-pro');
   const symMax = document.getElementById('curr-symbol-max');
@@ -54,10 +95,25 @@ function setCurrency(curr) {
   if (symPro) symPro.innerText = PRICING_CONFIG[curr].symbol;
   if (symMax) symMax.innerText = PRICING_CONFIG[curr].symbol;
 
+  // Sync ROI Slider bounds to currency
+  const feeSlider = document.getElementById('slider-fee');
+  const boundMin = document.getElementById('bound-fee-min');
+  const boundMax = document.getElementById('bound-fee-max');
+  const sliderConfig = PRICING_CONFIG[curr].feeSlider;
+
+  if (feeSlider) {
+    feeSlider.min = sliderConfig.min;
+    feeSlider.max = sliderConfig.max;
+    feeSlider.step = sliderConfig.step;
+    feeSlider.value = sliderConfig.defaultVal;
+  }
+  if (boundMin) boundMin.innerText = sliderConfig.minLabel;
+  if (boundMax) boundMax.innerText = sliderConfig.maxLabel;
+
   updatePricingDisplay();
   calculateROI();
 
-  // Update quick bar pricing pill
+  // Update quick bar pill
   const quickPill = document.querySelector('.quick-pricing-pill');
   if (quickPill) {
     const basePrice = isAnnualBilling ? PRICING_CONFIG[curr].basic.annual : PRICING_CONFIG[curr].basic.monthly;
@@ -66,7 +122,7 @@ function setCurrency(curr) {
 }
 
 // ============================================================
-// 2. BILLING TOGGLE (MONTHLY VS ANNUAL)
+// 4. BILLING TOGGLE (MONTHLY VS ANNUAL)
 // ============================================================
 function toggleBilling() {
   isAnnualBilling = !isAnnualBilling;
@@ -119,8 +175,8 @@ function updatePricingDisplay() {
 }
 
 // ============================================================
-// 3. WEB AUDIO API TURNSTILE SOUND SYNTHESIS
-// Zero latency, rich tone generator for Turnstile access events
+// 5. WEB AUDIO API SOUND SYNTHESIZER
+// High-grade audio feedback for gate unlock, denial, and trial expiry
 // ============================================================
 function getAudioContext() {
   if (!audioCtx) {
@@ -163,90 +219,88 @@ function playChime(type) {
       const osc1 = ctx.createOscillator();
       const gain1 = ctx.createGain();
       osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(659.25, now); // E5
-      gain1.gain.setValueAtTime(0.2, now);
-      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+      osc1.frequency.setValueAtTime(659.25, now);
+      gain1.gain.setValueAtTime(0.18, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
       osc1.connect(gain1);
       gain1.connect(ctx.destination);
       osc1.start(now);
-      osc1.stop(now + 0.32);
+      osc1.stop(now + 0.3);
 
       const osc2 = ctx.createOscillator();
       const gain2 = ctx.createGain();
       osc2.type = 'sine';
-      osc2.frequency.setValueAtTime(880.0, now + 0.12); // A5
-      gain2.gain.setValueAtTime(0.25, now + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+      osc2.frequency.setValueAtTime(880.0, now + 0.1);
+      gain2.gain.setValueAtTime(0.22, now + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
       osc2.connect(gain2);
       gain2.connect(ctx.destination);
-      osc2.start(now + 0.12);
-      osc2.stop(now + 0.68);
+      osc2.start(now + 0.1);
+      osc2.stop(now + 0.62);
 
-      // Low mechanical turnstile solenoid click
+      // Low turnstile solenoid mechanical pulse
       const clickOsc = ctx.createOscillator();
       const clickGain = ctx.createGain();
       clickOsc.type = 'triangle';
-      clickOsc.frequency.setValueAtTime(140, now);
-      clickOsc.frequency.exponentialRampToValueAtTime(40, now + 0.06);
-      clickGain.gain.setValueAtTime(0.3, now);
-      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+      clickOsc.frequency.setValueAtTime(130, now);
+      clickOsc.frequency.exponentialRampToValueAtTime(40, now + 0.05);
+      clickGain.gain.setValueAtTime(0.25, now);
+      clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
       clickOsc.connect(clickGain);
       clickGain.connect(ctx.destination);
       clickOsc.start(now);
-      clickOsc.stop(now + 0.08);
+      clickOsc.stop(now + 0.07);
 
     } else if (type === 'warning') {
-      // Double short buzzer alert
-      [0, 0.14].forEach(delay => {
+      // Subtle double warning buzzer
+      [0, 0.13].forEach(delay => {
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(320, now + delay);
-        gain.gain.setValueAtTime(0.18, now + delay);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.1);
+        gain.gain.setValueAtTime(0.15, now + delay);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 0.09);
         osc.connect(gain);
         gain.connect(ctx.destination);
         osc.start(now + delay);
-        osc.stop(now + delay + 0.11);
+        osc.stop(now + delay + 0.1);
       });
 
     } else if (type === 'danger') {
-      // Urgent denial alarm tone
+      // Urgent denial alarm
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(240, now);
-      osc.frequency.linearRampToValueAtTime(150, now + 0.35);
-      gain.gain.setValueAtTime(0.25, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+      osc.frequency.setValueAtTime(230, now);
+      osc.frequency.linearRampToValueAtTime(140, now + 0.32);
+      gain.gain.setValueAtTime(0.22, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.42);
+      osc.stop(now + 0.4);
 
     } else if (type === 'sync') {
-      // High-tech sync pulse
+      // Soft high-tech sync chime
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(1046.5, now); // C6
-      gain.gain.setValueAtTime(0.12, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.frequency.setValueAtTime(987.77, now);
+      gain.gain.setValueAtTime(0.1, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(now);
-      osc.stop(now + 0.22);
+      osc.stop(now + 0.2);
     }
   } catch (e) {
-    console.debug('Web Audio API not allowed or supported:', e);
+    console.debug('Web Audio API initialized on user interaction');
   }
 }
 
 // ============================================================
-// 4. INTERACTIVE TURNSTILE GATE SIMULATOR
+// 6. LIVE TURNSTILE CCTV GATE SIMULATOR
 // ============================================================
-let simResetTimer = null;
-
 function simulateScan(type) {
   if (simResetTimer) {
     clearTimeout(simResetTimer);
@@ -262,16 +316,17 @@ function simulateScan(type) {
 
   if (!scanBox || !gateIndicator) return;
 
-  // Reset classes
+  // Reset indicator styles
   gateIndicator.className = 'sim-gate-indicator';
-  scanBox.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+  scanBox.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+  scanBox.style.boxShadow = 'none';
 
   if (type === 'active_member') {
     playChime('unlock');
 
     scanBox.style.borderColor = '#10b981';
-    scanBox.style.boxShadow = '0 0 25px rgba(16, 185, 129, 0.7)';
-    scanTag.style.background = '#065f46';
+    scanBox.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.4)';
+    scanTag.style.background = '#064e3b';
     scanTag.style.color = '#34d399';
     scanTag.innerText = '✓ P-000002 • Ali Hassan (99.4% Biometric Conf.)';
 
@@ -287,36 +342,36 @@ function simulateScan(type) {
   } else if (type === 'roaming_denied') {
     playChime('warning');
 
-    scanBox.style.borderColor = '#c084fc';
-    scanBox.style.boxShadow = '0 0 22px rgba(192, 132, 252, 0.6)';
-    scanTag.style.background = '#581c87';
+    scanBox.style.borderColor = '#8b5cf6';
+    scanBox.style.boxShadow = '0 0 16px rgba(139, 92, 246, 0.4)';
+    scanTag.style.background = '#4c1d95';
     scanTag.style.color = '#e9d5ff';
     scanTag.innerText = '⚠️ P-000041 • Bilal Tariq (Single Branch Pass)';
 
     gateIndicator.classList.add('locked-denied');
     gateIcon.innerText = '🚫🔒';
     gateText.innerText = 'DOOR LOCKED — ROAMING DENIED';
-    logBar.innerHTML = '🚫 <strong style="color:#f43f5e;">SECURITY ALERT:</strong> Access Denied. Member registered at Gulberg Branch. Pro/Max Roaming Pass required for Main Gate.';
+    logBar.innerHTML = '🚫 <strong style="color:#ef4444;">SECURITY ALERT:</strong> Access Denied. Member registered at Gulberg Branch. Pro/Max Roaming Pass required for Main Gate.';
 
   } else if (type === 'expired_trial') {
     playChime('danger');
 
-    scanBox.style.borderColor = '#f43f5e';
-    scanBox.style.boxShadow = '0 0 25px rgba(244, 63, 94, 0.7)';
-    scanTag.style.background = '#881337';
-    scanTag.style.color = '#fda4af';
+    scanBox.style.borderColor = '#ef4444';
+    scanBox.style.boxShadow = '0 0 16px rgba(239, 68, 68, 0.4)';
+    scanTag.style.background = '#7f1d1d';
+    scanTag.style.color = '#fca5a5';
     scanTag.innerText = '🚨 Guest-918 • Hamza (Trial 5/5 Days Used)';
 
     gateIndicator.classList.add('locked-denied');
     gateIcon.innerText = '🚫🔒';
     gateText.innerText = 'DOOR LOCKED — 5-DAY TRIAL EXPIRED';
-    logBar.innerHTML = '⚠️ <strong style="color:#f43f5e;">TRIAL EXPIRED:</strong> Free guest visited 5 days. Turnstile barrier locked. Front desk membership purchase required.';
+    logBar.innerHTML = '⚠️ <strong style="color:#ef4444;">TRIAL EXPIRED:</strong> Free guest visited 5 days. Turnstile barrier locked. Front desk membership purchase required.';
 
   } else {
     // Reset state
-    scanBox.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+    scanBox.style.borderColor = 'rgba(59, 130, 246, 0.5)';
     scanBox.style.boxShadow = 'none';
-    scanTag.style.background = 'rgba(15, 23, 42, 0.85)';
+    scanTag.style.background = 'rgba(15, 23, 42, 0.9)';
     scanTag.style.color = '#cbd5e1';
     scanTag.innerText = 'Waiting for face...';
 
@@ -327,7 +382,7 @@ function simulateScan(type) {
 }
 
 // ============================================================
-// 5. MULTI-BRANCH CITY NETWORK DEMO PULSE
+// 7. MULTI-BRANCH CITY NETWORK DEMO PULSE
 // ============================================================
 function triggerBranchPulse(branchKey) {
   playChime('sync');
@@ -344,11 +399,8 @@ function triggerBranchPulse(branchKey) {
     DHA: 'DHA Phase 5'
   };
 
-  // Remove existing active states
   Object.values(nodes).forEach(n => {
-    if (n) {
-      n.classList.remove('active', 'pulse-highlight');
-    }
+    if (n) n.classList.remove('active', 'pulse-highlight');
   });
 
   const target = nodes[branchKey];
@@ -356,21 +408,19 @@ function triggerBranchPulse(branchKey) {
     target.classList.add('active', 'pulse-highlight');
     setTimeout(() => {
       target.classList.remove('pulse-highlight');
-    }, 1200);
+    }, 1100);
   }
 
-  // Update simulator log bar with roaming telemetry
   const logBar = document.getElementById('sim-log-bar');
   if (logBar) {
-    logBar.innerHTML = `🌐 <strong style="color:#34d399;">ATLAS REPLICATION:</strong> Real-time biometrics synchronized with <strong>${branchNames[branchKey] || branchKey}</strong> in 14ms.`;
+    logBar.innerHTML = `🌐 <strong style="color:#3b82f6;">ATLAS CLOUD SYNC:</strong> Real-time biometrics replicated with <strong>${branchNames[branchKey] || branchKey}</strong> in 12ms.`;
   }
 }
 
 // ============================================================
-// 6. DETAILED COMPARISON TABLE CATEGORY FILTER
+// 8. COMPARISON TABLE CATEGORY FILTER
 // ============================================================
 function filterComparison(category, btnEl) {
-  // Update active chip state
   const chips = document.querySelectorAll('.filter-chip');
   chips.forEach(c => c.classList.remove('active'));
   if (btnEl) btnEl.classList.add('active');
@@ -391,7 +441,7 @@ function filterComparison(category, btnEl) {
 }
 
 // ============================================================
-// 7. INTERACTIVE GYM ROI & LEAKAGE CALCULATOR
+// 9. INTERACTIVE GYM ROI & LEAKAGE CALCULATOR
 // ============================================================
 function calculateROI() {
   const membersEl = document.getElementById('slider-members');
@@ -404,32 +454,28 @@ function calculateROI() {
   const fee = parseInt(feeEl.value, 10);
   const branches = parseInt(branchesEl.value, 10);
 
-  const isUsd = currentCurrency === 'USD';
-  const prefix = isUsd ? '$' : 'Rs. ';
-
-  // If USD, fee slider is scaled appropriately
-  const effectiveFee = isUsd ? Math.round(fee / 280) : fee;
+  const prefix = PRICING_CONFIG[currentCurrency].displayPrefix;
 
   document.getElementById('val-members').innerText = members.toLocaleString();
-  document.getElementById('val-fee').innerText = prefix + effectiveFee.toLocaleString();
+  document.getElementById('val-fee').innerText = prefix + fee.toLocaleString();
   document.getElementById('val-branches').innerText = branches + (branches === 1 ? ' Branch' : ' Branches');
 
-  // Industry average: 15% fraudulent or unpaid visits without biometrics
+  // Industry average: 15% fraudulent or shared entries without biometric gates
   const fraudulentEntries = Math.round(members * 0.15);
-  const monthlyLeakage = fraudulentEntries * effectiveFee;
+  const monthlyLeakage = fraudulentEntries * fee;
 
   document.getElementById('roi-leakage').innerText = prefix + monthlyLeakage.toLocaleString();
 
   // Tier Recommendation
   let recommendedPlan = '🥉 Basic Plan';
-  let softwareCost = isUsd ? 49 : 14999;
+  let softwareCost = currentCurrency === 'USD' ? 49 : 14999;
 
   if (branches >= 4 || members > 800) {
     recommendedPlan = '🥇 Max Plan';
-    softwareCost = isUsd ? 179 : 54999;
+    softwareCost = currentCurrency === 'USD' ? 179 : 54999;
   } else if (branches >= 2 || members > 300) {
     recommendedPlan = '🥈 Pro Plan';
-    softwareCost = isUsd ? 99 : 29999;
+    softwareCost = currentCurrency === 'USD' ? 99 : 29999;
   }
 
   const netProfit = monthlyLeakage - softwareCost;
@@ -442,7 +488,7 @@ function calculateROI() {
 }
 
 // ============================================================
-// 8. BOOK LIVE DEMO MODAL & LEAD SUBMISSION
+// 10. BOOK LIVE DEMO MODAL & LEAD SUBMISSION
 // ============================================================
 function openDemoModal(preselectedPlan = 'PRO') {
   const modal = document.getElementById('demo-modal');
@@ -468,7 +514,7 @@ function closeDemoModal(event) {
   const modal = document.getElementById('demo-modal');
   if (modal) {
     modal.classList.remove('open');
-    document.body.style.overflow = 'auto';
+    document.body.style.overflow = '';
   }
 }
 
@@ -505,8 +551,6 @@ async function submitDemoForm(event) {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
-
     feedback.className = 'form-feedback success';
     feedback.innerText = `✓ Demo requested! Thank you ${contactName}. Opening WhatsApp VIP Concierge...`;
     feedback.style.display = 'block';
@@ -536,7 +580,7 @@ async function submitDemoForm(event) {
 }
 
 // ============================================================
-// 9. FAQ ACCORDION TOGGLE
+// 11. FAQ ACCORDION TOGGLE
 // ============================================================
 function toggleFaq(buttonEl) {
   const item = buttonEl.parentElement;
@@ -550,7 +594,7 @@ function toggleFaq(buttonEl) {
 }
 
 // ============================================================
-// 10. SCROLL EVENT LISTENER FOR FLOATING QUICK ACTION BAR
+// 12. SCROLL EVENT LISTENER FOR QUICK ACTION BAR
 // ============================================================
 function setupScrollListener() {
   const quickBar = document.getElementById('quick-bar');
@@ -569,6 +613,7 @@ function setupScrollListener() {
 // INITIALIZATION ON DOM READY
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  initSimClock();
   calculateROI();
   setupScrollListener();
 
@@ -576,6 +621,13 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       closeDemoModal();
+      const drawer = document.getElementById('mobile-nav-drawer');
+      const overlay = document.getElementById('mobile-drawer-overlay');
+      if (drawer && drawer.classList.contains('open')) {
+        drawer.classList.remove('open');
+        overlay.classList.remove('open');
+        document.body.style.overflow = '';
+      }
     }
   });
 });

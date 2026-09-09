@@ -12,10 +12,9 @@
 </head>
 <body>
 
-  <!-- Background Ambient Glows -->
-  <div class="glow-sphere glow-1"></div>
-  <div class="glow-sphere glow-2"></div>
-  <div class="glow-sphere glow-3"></div>
+  <!-- Executive Theme Subtle Backdrops -->
+  <div class="enterprise-grid-backdrop"></div>
+  <div class="ambient-radial-glow"></div>
 
   <!-- Top Announcement Ribbon -->
   <div class="announcement-ribbon">
@@ -53,14 +52,43 @@
         </div>
 
         <a href="http://localhost:3001" target="_blank" class="btn btn-outline" id="btn-login-system">
-          🔐 Gym Client Login
+          🔐 Gym Login
         </a>
         <button class="btn btn-primary" id="btn-nav-demo" onclick="openDemoModal('PRO')">
-          ⚡ Book Live Demo
+          ⚡ Book Demo
+        </button>
+        <button class="mobile-menu-btn" id="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+          <span></span><span></span><span></span>
         </button>
       </div>
     </div>
   </header>
+
+  <!-- Mobile Navigation Drawer -->
+  <div class="mobile-drawer-overlay" id="mobile-drawer-overlay" onclick="toggleMobileMenu()"></div>
+  <div class="mobile-nav-drawer" id="mobile-nav-drawer">
+    <div class="mobile-drawer-top">
+      <div class="brand-text">
+        <span class="brand-name">TITAN <span class="accent-text">GYM OS</span></span>
+        <span class="brand-sub">Enterprise Biometric Platform</span>
+      </div>
+      <button class="mobile-drawer-close" onclick="toggleMobileMenu()" aria-label="Close menu">&times;</button>
+    </div>
+    <nav class="mobile-drawer-links">
+      <a href="#features" onclick="toggleMobileMenu()">Why Switch</a>
+      <a href="#simulator" onclick="toggleMobileMenu()">Turnstile Simulator</a>
+      <a href="#pricing" onclick="toggleMobileMenu()">Subscription Plans</a>
+      <a href="#network-demo" onclick="toggleMobileMenu()">Multi-Branch Roaming</a>
+      <a href="#roi-calculator" onclick="toggleMobileMenu()">ROI Calculator</a>
+      <a href="#comparison" onclick="toggleMobileMenu()">Compare Tiers</a>
+      <a href="#hardware" onclick="toggleMobileMenu()">Hardware Specs</a>
+      <a href="#faq" onclick="toggleMobileMenu()">FAQ</a>
+    </nav>
+    <div class="mobile-drawer-actions">
+      <a href="http://localhost:3001" target="_blank" class="btn btn-outline btn-full">🔐 Gym Client Login</a>
+      <button class="btn btn-primary btn-full" onclick="openDemoModal('PRO'); toggleMobileMenu();">⚡ Book Live Demo</button>
+    </div>
+  </div>
 
   <!-- Hero Section -->
   <section class="hero-section">
@@ -122,13 +150,23 @@
 
           <div class="sim-viewport">
             <div class="sim-camera-box" id="sim-camera-box">
+              <div class="cctv-hud-top">
+                <span class="cctv-tag-live"><span class="cctv-rec-dot"></span> LIVE REC</span>
+                <span class="cctv-tag-stream">CAM 01 // MAIN TURNSTILE</span>
+                <span class="cctv-tag-clock" id="sim-live-clock">--:--:--</span>
+              </div>
+              <div class="cctv-corner tl"></div>
+              <div class="cctv-corner tr"></div>
+              <div class="cctv-corner bl"></div>
+              <div class="cctv-corner br"></div>
               <div class="sim-face-scanner" id="sim-scanner">
                 <div class="scan-line"></div>
                 <div class="scan-box" id="scan-box">
+                  <div class="scan-reticle"></div>
                   <span class="scan-tag" id="scan-tag">Waiting for face...</span>
                 </div>
               </div>
-              <div class="sim-fps-tag">⚡ 21.5 FPS (1280x720 HD Widescreen)</div>
+              <div class="sim-fps-tag">⚡ 21.5 FPS • 1280x720 HD Stream</div>
               <div class="sim-gate-indicator" id="sim-gate-indicator">
                 <span class="gate-icon" id="gate-icon">🚪🔒</span>
                 <span class="gate-text" id="gate-text">GATE SECURED & LOCKED</span>
