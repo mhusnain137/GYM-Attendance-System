@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
 import MemberProfileModal from './MemberProfileModal';
+import { useBranch } from '../context/BranchContext';
 import './Attendance.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -30,6 +31,7 @@ function PersonAvatar({ name, personId, size = 44, className = '' }) {
 }
 
 function Attendance() {
+  const { selectedBranchId, branches } = useBranch();
   const [attendance, setAttendance] = useState([]);
   const [visits, setVisits] = useState([]);
   const [memberships, setMemberships] = useState([]);
@@ -54,15 +56,15 @@ function Attendance() {
     }, 2000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchData = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const [attRes, visRes, memRes] = await Promise.all([
-        axios.get('/api/attendance'),
-        axios.get('/api/visits').catch(() => ({ data: [] })),
-        axios.get('/api/memberships').catch(() => ({ data: [] }))
+        axios.get('/api/attendance', { params: { branch_id: selectedBranchId } }),
+        axios.get('/api/visits', { params: { branch_id: selectedBranchId } }).catch(() => ({ data: [] })),
+        axios.get('/api/memberships', { params: { branch_id: selectedBranchId } }).catch(() => ({ data: [] }))
       ]);
       setAttendance(attRes.data || []);
       setVisits(visRes.data || []);
@@ -492,6 +494,12 @@ function Attendance() {
                             {record.camera_source === 'rtsp' ? `📹 CCTV (${record.camera_name || 'IP Cam'})` : `📷 ${record.camera_name || 'Webcam'}`}
                           </span>
                         </div>
+                        <div className="record-detail">
+                          <span className="detail-label">Branch:</span>
+                          <span className="detail-value" style={{ background: '#f1f5f9', color: '#334155', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', fontSize: '0.78rem' }}>
+                            🏢 {record.branch_name || branches.find(b => b.branch_id === record.branch_id)?.name || 'Main Branch'}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -535,6 +543,9 @@ function Attendance() {
                           {renderMembershipBadge(group.person_id, group.name)}
                           <span className="visit-cam-tag">
                             {group.visits[0]?.camera_source === 'rtsp' ? `📹 CCTV` : '📷 Webcam'}
+                          </span>
+                          <span className="visit-cam-tag" style={{ background: '#f1f5f9', color: '#475569' }}>
+                            🏢 {group.visits[0]?.branch_name || branches.find(b => b.branch_id === (group.visits[0]?.branch_id || group.branch_id))?.name || 'Main Branch'}
                           </span>
                         </div>
                       </div>
@@ -591,6 +602,7 @@ function Attendance() {
                   <th>TOTAL SIGHTINGS</th>
                   <th>MEMBERSHIP</th>
                   <th>CAMERA</th>
+                  <th>BRANCH</th>
                   <th>ACTION</th>
                 </tr>
               </thead>
@@ -633,6 +645,11 @@ function Attendance() {
                       <td>
                         <span className="audit-cam-badge">
                           {group.visits[0]?.camera_source === 'rtsp' ? '📹 CCTV' : '📷 Webcam'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.76rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#334155' }}>
+                          🏢 {group.visits[0]?.branch_name || branches.find(b => b.branch_id === (group.visits[0]?.branch_id || group.branch_id))?.name || 'Main Branch'}
                         </span>
                       </td>
                       <td>

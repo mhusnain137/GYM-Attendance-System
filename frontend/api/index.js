@@ -3307,10 +3307,16 @@ export default function handler(req, res) {
       WORKOUT_LOGS_STORE.unshift(newLog);
       return res.status(201).json({ status: 'success', log: newLog, logs: WORKOUT_LOGS_STORE });
     }
+    const branchIdMatch = url.match(/branch_id=([^&]+)/);
+    const branchId = branchIdMatch ? decodeURIComponent(branchIdMatch[1]) : null;
+    let filteredLogs = WORKOUT_LOGS_STORE;
+    if (branchId && branchId !== 'all') {
+      filteredLogs = filteredLogs.filter(l => (l.branch_id || 'BR-MAIN-001') === branchId);
+    }
     return res.status(200).json({
       status: 'success',
-      count: WORKOUT_LOGS_STORE.length,
-      logs: WORKOUT_LOGS_STORE
+      count: filteredLogs.length,
+      logs: filteredLogs
     });
   }
 
@@ -3424,6 +3430,38 @@ export default function handler(req, res) {
       },
       cafe_history: CAFE_ORDERS_STORE.filter(o => o.person_id === memId)
     });
+  }
+
+  // 10.5 Branches API
+  if (url.includes('/branches')) {
+    return res.status(200).json([
+      {
+        branch_id: 'BR-MAIN-001',
+        name: 'Titan Gym (Main Branch)',
+        branch_name: 'Titan Gym (Main Branch)',
+        city: 'Lahore',
+        address: 'Titan Gym Headquarters, Ground Floor',
+        phone: '+92 300 1234567',
+        is_active: true,
+        members_count: 17,
+        today_visits_count: 5,
+        active_cameras_count: 1,
+        cameras: [{ camera_id: 'cam_g_01', name: 'Main Turnstile', type: 'CCTV_RTSP', status: 'ONLINE' }]
+      },
+      {
+        branch_id: 'BR-GLB01',
+        name: 'Gulberg Branch',
+        branch_name: 'Gulberg Branch',
+        city: 'Lahore',
+        address: 'Main Boulevard, Gulberg III',
+        phone: '+92 321 9876543',
+        is_active: true,
+        members_count: 8,
+        today_visits_count: 3,
+        active_cameras_count: 1,
+        cameras: [{ camera_id: 'cam_g_02', name: 'Front Entrance', type: 'CCTV_RTSP', status: 'ONLINE' }]
+      }
+    ]);
   }
 
   // 11. People Directory

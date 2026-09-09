@@ -1121,3 +1121,20 @@
     width: 80mm;
   }
 }
+
+/* Multi-Branch Cafe Styles */
+.cafe-header-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pos-serving-branch-banner {
+  box-shadow: 0 1px 4px rgba(135, 95, 69, 0.08);
+}
+
+.cafe-order-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}

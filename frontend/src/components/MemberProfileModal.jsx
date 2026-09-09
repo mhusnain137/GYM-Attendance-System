@@ -129,6 +129,12 @@ function MemberProfileModal({ personId, personName, onClose, onOpenRenew, onOpen
                     {m.status === 'FROZEN' ? '❄️ FROZEN' : m.status === 'ACTIVE' ? `🟢 ${m.plan_name || 'Active Pass'}` : '🚨 EXPIRED'}
                   </span>
                 )}
+                <span className="profile-badge-branch">
+                  🏢 {m?.branch_name || profileData?.person?.branch_name || 'Main Branch'}
+                </span>
+                <span className={`profile-badge-roaming ${m?.is_roaming || m?.allowed_branches?.includes('all') ? 'roaming-active' : 'single-branch'}`}>
+                  {m?.is_roaming || m?.allowed_branches?.includes('all') ? '🌐 Roaming Pass (All Branches)' : '📍 Single Branch Pass'}
+                </span>
               </div>
             </div>
           </div>

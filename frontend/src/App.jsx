@@ -9,8 +9,10 @@ import Cafe from './components/Cafe';
 import StaffManager from './components/StaffManager';
 import MemberPortal from './components/MemberPortal';
 import MemberWorkouts from './components/MemberWorkouts';
+import BranchManager from './components/BranchManager';
 import Login from './components/Login';
 import { AuthProvider, useAuth, ROLES, ROLE_LABELS } from './context/AuthContext';
+import { BranchProvider, useBranch } from './context/BranchContext';
 import './App.css';
 
 const THEMES = [
@@ -53,6 +55,7 @@ class ErrorBoundary extends React.Component {
 
 function AppContent() {
   const { isAuthenticated, role, user, logout, isAdmin, isManager, isReceptionist, isMember, canManageStaff } = useAuth();
+  const { branches, selectedBranchId, setSelectedBranchId } = useBranch();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [systemStatus, setSystemStatus] = useState({
     camera: false,
@@ -63,6 +66,7 @@ function AppContent() {
   });
   const [currentTheme, setCurrentTheme] = useState('dark');
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
+  const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
 
   useEffect(() => {
@@ -156,6 +160,8 @@ function AppContent() {
         return <Attendance />;
       case 'activity':
         return isAdmin ? <Activity /> : <Dashboard systemStatus={systemStatus} />;
+      case 'branches':
+        return isAdmin ? <BranchManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'staff':
         return isAdmin ? <StaffManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'settings':
@@ -234,6 +240,73 @@ function AppContent() {
           <div className="status-pill-badge">
             <span className={`status-dot ${systemStatus.camera ? 'online' : ''}`}></span>
             <span>{systemStatus.camera ? 'AI CAMERA LIVE' : 'CAMERA OFFLINE'}</span>
+          </div>
+
+          {/* Multi-Branch Selector Dropdown */}
+          <div style={{ position: 'relative' }}>
+            <button 
+              style={{
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1.5px solid rgba(16, 185, 129, 0.4)',
+                color: '#059669',
+                padding: '6px 14px',
+                borderRadius: '9999px',
+                fontSize: '0.82rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+              onClick={() => setShowBranchDropdown(!showBranchDropdown)}
+              title="Switch Active Gym Branch"
+            >
+              <span>🏢</span>
+              <span>
+                {selectedBranchId === 'all'
+                  ? 'All Branches'
+                  : (branches.find(b => b.branch_id === selectedBranchId)?.name ||
+                     branches.find(b => b.branch_id === selectedBranchId)?.branch_name ||
+                     'Current Branch')}
+              </span>
+              <span style={{ fontSize: '0.65rem' }}>▼</span>
+            </button>
+
+            {showBranchDropdown && (
+              <div className="theme-dropdown" style={{ minWidth: '240px', right: 0, left: 'auto' }}>
+                <button
+                  className={`theme-option ${selectedBranchId === 'all' ? 'active' : ''}`}
+                  onClick={() => { setSelectedBranchId('all'); setShowBranchDropdown(false); }}
+                >
+                  🏢 All Branches (Consolidated)
+                </button>
+                <div style={{ height: '1px', background: 'var(--c-border-light, #e2e8f0)', margin: '4px 0' }} />
+                {branches.map(b => {
+                  const bName = b.name || b.branch_name || 'Gym Branch';
+                  return (
+                    <button
+                      key={b.branch_id}
+                      className={`theme-option ${selectedBranchId === b.branch_id ? 'active' : ''}`}
+                      onClick={() => { setSelectedBranchId(b.branch_id); setShowBranchDropdown(false); }}
+                    >
+                      📍 {bName} <small style={{ color: '#64748b' }}>({b.city || 'City'})</small>
+                    </button>
+                  );
+                })}
+                {isAdmin && (
+                  <>
+                    <div style={{ height: '1px', background: 'var(--c-border-light, #e2e8f0)', margin: '4px 0' }} />
+                    <button
+                      className="theme-option"
+                      style={{ color: '#10b981', fontWeight: 700 }}
+                      onClick={() => { setCurrentPage('branches'); setShowBranchDropdown(false); }}
+                    >
+                      ⚙️ Manage Branches...
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Theme Dropdown */}
@@ -351,6 +424,14 @@ function AppContent() {
               {isAdmin && (
                 <>
                   <div 
+                    className={`sidebar-nav-item ${currentPage === 'branches' ? 'active' : ''}`}
+                    onClick={() => setCurrentPage('branches')}
+                  >
+                    <span className="nav-item-icon">🏢</span>
+                    <span>Branch Network</span>
+                  </div>
+
+                  <div 
                     className={`sidebar-nav-item ${currentPage === 'staff' ? 'active' : ''}`}
                     onClick={() => setCurrentPage('staff')}
                   >
@@ -392,7 +473,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <BranchProvider>
+        <AppContent />
+      </BranchProvider>
     </AuthProvider>
   );
 }

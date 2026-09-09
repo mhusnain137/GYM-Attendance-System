@@ -18,8 +18,8 @@ VISITS_FILE = os.path.join(PROJECT_ROOT, "data", "visits.json")
 # ============================================================
 
 CAMERA_ID = 0
-CAMERA_WIDTH = 640
-CAMERA_HEIGHT = 480
+CAMERA_WIDTH = 1280
+CAMERA_HEIGHT = 720
 
 # Camera source type: 'webcam' or 'rtsp'
 CAMERA_SOURCE = 'rtsp'

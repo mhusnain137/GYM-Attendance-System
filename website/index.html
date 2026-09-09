@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Titan Gym OS — AI Face Recognition Turnstiles & Multi-Branch Gym Management</title>
+  <meta name="description" content="The all-in-one AI operating system for commercial gyms. Eliminate membership card sharing with 99.4% facial recognition turnstiles, multi-branch roaming passes, and smart cafe POS.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Background Ambient Glows -->
+  <div class="glow-sphere glow-1"></div>
+  <div class="glow-sphere glow-2"></div>
+  <div class="glow-sphere glow-3"></div>
+
+  <!-- Top Announcement Ribbon -->
+  <div class="announcement-ribbon">
+    <span>✨ <strong>New Multi-Branch Roaming Engine:</strong> City-Wide Roaming Passes & Instant Cafe Khata Settlement now live in Pro & Max!</span>
+    <a href="#pricing" class="ribbon-link">Explore Plans ➔</a>
+  </div>
+
+  <!-- Main Navigation Bar -->
+  <header class="navbar" id="navbar">
+    <div class="nav-container">
+      <a href="#" class="nav-brand">
+        <div class="brand-badge-icon">🛡️</div>
+        <div class="brand-text">
+          <span class="brand-name">TITAN <span class="accent-text">GYM OS</span></span>
+          <span class="brand-sub">AI & Multi-Branch Platform</span>
+        </div>
+      </a>
+
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#simulator">Turnstile Simulator</a>
+        <a href="#pricing">Pricing Plans</a>
+        <a href="#network-demo">Multi-Branch Map</a>
+        <a href="#roi-calculator">ROI Calculator</a>
+        <a href="#comparison">Compare Tiers</a>
+        <a href="#hardware">Hardware</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+
+      <div class="nav-actions">
+        <!-- Currency Selector -->
+        <div class="currency-toggle" title="Switch Currency (PKR / USD)">
+          <button class="curr-btn active" id="curr-pkr" onclick="setCurrency('PKR')">PKR</button>
+          <button class="curr-btn" id="curr-usd" onclick="setCurrency('USD')">USD</button>
+        </div>
+
+        <a href="http://localhost:3001" target="_blank" class="btn btn-outline" id="btn-login-system">
+          🔐 Gym Client Login
+        </a>
+        <button class="btn btn-primary" id="btn-nav-demo" onclick="openDemoModal('PRO')">
+          ⚡ Book Live Demo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dot"></span>
+          <span>Next-Gen Turnstile Hardware & Multi-Branch Cloud</span>
+        </div>
+        <h1 class="hero-title">
+          Stop Membership Leakage. Automate Gates with <span class="gradient-text">99.4% Facial AI</span>.
+        </h1>
+        <p class="hero-subtitle">
+          Eliminate shared cards and unpaid gym entries forever. Titan Gym OS combines millisecond facial recognition turnstiles, multi-branch city roaming, smart cafe POS, and automated WhatsApp dues collection in one unified system.
+        </p>
+
+        <div class="hero-cta-group">
+          <button class="btn btn-primary btn-lg" onclick="openDemoModal('PRO')" id="hero-cta-demo">
+            🚀 Book a 1-on-1 Live Demo
+          </button>
+          <a href="#pricing" class="btn btn-secondary btn-lg" id="hero-cta-pricing">
+            💳 View Basic, Pro & Max Plans
+          </a>
+        </div>
+
+        <div class="hero-stats-row">
+          <div class="stat-box">
+            <span class="stat-number">20+ FPS</span>
+            <span class="stat-label">Real-Time Face Detection</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-box">
+            <span class="stat-number">0.2s</span>
+            <span class="stat-label">Turnstile Unlock Latency</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-box">
+            <span class="stat-number">100%</span>
+            <span class="stat-label">Tailgating & Card Sharing Stopped</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hero Visual: Live Interactive Turnstile Simulator with Audio Feedback -->
+      <div class="hero-simulator" id="simulator">
+        <div class="simulator-card">
+          <div class="sim-header">
+            <div class="sim-header-left">
+              <span class="sim-status-dot online"></span>
+              <span class="sim-title">Live Turnstile AI Gate Simulator</span>
+            </div>
+            <div class="sim-header-right">
+              <button class="audio-toggle-btn" id="audio-toggle-btn" onclick="toggleAudio()" title="Toggle Gate Audio Chimes">
+                🔊 Sound: <strong id="audio-status-label">ON</strong>
+              </button>
+              <span class="sim-chip">Branch: Main Gym Gate 01</span>
+            </div>
+          </div>
+
+          <div class="sim-viewport">
+            <div class="sim-camera-box" id="sim-camera-box">
+              <div class="sim-face-scanner" id="sim-scanner">
+                <div class="scan-line"></div>
+                <div class="scan-box" id="scan-box">
+                  <span class="scan-tag" id="scan-tag">Waiting for face...</span>
+                </div>
+              </div>
+              <div class="sim-fps-tag">⚡ 21.5 FPS (1280x720 HD Widescreen)</div>
+              <div class="sim-gate-indicator" id="sim-gate-indicator">
+                <span class="gate-icon" id="gate-icon">🚪🔒</span>
+                <span class="gate-text" id="gate-text">GATE SECURED & LOCKED</span>
+              </div>
+            </div>
+
+            <div class="sim-controls">
+              <div class="sim-hint">Click a test visitor to experience the instant AI audio-visual reaction:</div>
+              <div class="sim-btn-grid">
+                <button class="sim-test-btn success" onclick="simulateScan('active_member')">
+                  🟢 Scan Active Member
+                  <small>Valid Pass • Instant Unlock Chime</small>
+                </button>
+                <button class="sim-test-btn warning" onclick="simulateScan('roaming_denied')">
+                  🟣 Scan Unauthorized Branch
+                  <small>No Roaming • Door Locked Alarm</small>
+                </button>
+                <button class="sim-test-btn danger" onclick="simulateScan('expired_trial')">
+                  🔴 Scan Expired 5-Day Trial
+                  <small>Trial Over • Gate Locked Buzzer</small>
+                </button>
+                <button class="sim-test-btn neutral" onclick="simulateScan('reset')">
+                  🔄 Reset Gate
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="sim-log-bar" id="sim-log-bar">
+            <span>ℹ️ System Status: Ready. Electronic turnstile relays connected.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Problem vs Solution Section -->
+  <section class="problem-section" id="features">
+    <div class="container">
+      <div class="section-badge">WHY MODERN GYMS SWITCH</div>
+      <h2 class="section-heading">Built to solve the 3 biggest money leaks in fitness centers</h2>
+      <p class="section-sub">Paper registers and RFID keycards cost the average gym over Rs. 150,000 every single month.</p>
+
+      <div class="problem-grid">
+        <div class="problem-card">
+          <div class="card-icon red">❌</div>
+          <h3>The Shared RFID Card Scam</h3>
+          <p>Members hand their keycard or barcode screenshot to friends. Staff at reception can't catch everyone, leading to 25%+ unpaid gym traffic and crowded equipment.</p>
+          <div class="solution-highlight">
+            <strong>Titan Solution:</strong> Millisecond facial biometric recognition ensures ONLY the paying member can pass through the gate.
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="card-icon red">❌</div>
+          <h3>Uncontrolled Free Trials</h3>
+          <p>Visitors take "free trial workouts" repeatedly without ever paying membership fees, exploiting front desk shift changes.</p>
+          <div class="solution-highlight">
+            <strong>Titan Solution:</strong> Automatic 5-Day Free Trial countdown locks the gate on the 6th day until membership is purchased.
+          </div>
+        </div>
+
+        <div class="problem-card">
+          <div class="card-icon red">❌</div>
+          <h3>Multi-Branch Revenue Chaos</h3>
+          <p>Members join at your cheaper branch but workout at your premium branch across town. Staff have no way to verify multi-gym rights.</p>
+          <div class="solution-highlight">
+            <strong>Titan Solution:</strong> Smart Roaming Access control automatically rejects single-branch passes at unauthorized locations.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Multi-Branch City Network Demo Widget -->
+  <section class="network-section" id="network-demo">
+    <div class="container">
+      <div class="network-card">
+        <div class="network-header">
+          <div>
+            <div class="section-badge">MULTI-BRANCH INTELLIGENCE</div>
+            <h2 class="section-heading">City-Wide Multi-Branch Roaming Engine</h2>
+            <p class="section-sub" style="margin-bottom: 0;">Watch how Titan Gym OS unifies multiple gym locations in real-time.</p>
+          </div>
+          <div class="network-actions">
+            <button class="btn btn-outline" onclick="triggerBranchPulse('MAIN')">🏢 Main HQ Gate</button>
+            <button class="btn btn-outline" onclick="triggerBranchPulse('GULBERG')">🏢 Gulberg Branch</button>
+            <button class="btn btn-outline" onclick="triggerBranchPulse('DHA')">🏢 DHA Phase 5</button>
+          </div>
+        </div>
+
+        <div class="network-map-visual">
+          <div class="branch-node active" id="node-main">
+            <div class="node-icon">🏢</div>
+            <div class="node-title">Main HQ Branch</div>
+            <div class="node-meta">17 Active Members • 2 Turnstiles</div>
+            <span class="node-badge online">● LIVE BIOMETRICS</span>
+          </div>
+
+          <div class="network-data-stream">
+            <div class="stream-line">
+              <span class="pulse-packet packet-1"></span>
+              <span class="pulse-packet packet-2"></span>
+            </div>
+            <span class="stream-label">MongoDB Atlas Real-Time Replication</span>
+          </div>
+
+          <div class="branch-node" id="node-gulberg">
+            <div class="node-icon">🏢</div>
+            <div class="node-title">Gulberg Branch</div>
+            <div class="node-meta">8 Today Visits • Gate Turnstile</div>
+            <span class="node-badge online">● ROAMING ACTIVE</span>
+          </div>
+
+          <div class="network-data-stream">
+            <div class="stream-line">
+              <span class="pulse-packet packet-3"></span>
+            </div>
+            <span class="stream-label">1-Click Member Transfer</span>
+          </div>
+
+          <div class="branch-node" id="node-dha">
+            <div class="node-icon">🏢</div>
+            <div class="node-title">DHA Phase 5</div>
+            <div class="node-meta">400 Member Capacity</div>
+            <span class="node-badge sync">● AUTO-SYNCED</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section: Basic, Pro, Max Tiers -->
+  <section class="pricing-section" id="pricing">
+    <div class="container">
+      <div class="section-badge">TRANSPARENT SUBSCRIPTION TIERS</div>
+      <h2 class="section-heading">Choose the plan that fits your gym's ambition</h2>
+      <p class="section-sub">From boutique single-floor gyms to multi-city fitness empires. No hidden setup fees.</p>
+
+      <!-- Billing Toggle Switch -->
+      <div class="billing-toggle-wrapper">
+        <span class="toggle-label" id="label-monthly">Monthly Billing</span>
+        <button class="toggle-switch" id="billing-toggle" onclick="toggleBilling()" aria-label="Toggle Billing Frequency">
+          <span class="toggle-handle"></span>
+        </button>
+        <span class="toggle-label" id="label-annual">Annual Billing</span>
+        <span class="save-badge">🔥 Save 20% + 2 Months Free</span>
+      </div>
+
+      <!-- 3 Tier Cards Grid -->
+      <div class="pricing-grid">
+
+        <!-- TIER 1: BASIC PLAN -->
+        <div class="pricing-card basic-card">
+          <div class="card-tier-badge">STARTER • SINGLE BRANCH</div>
+          <h3 class="tier-name">Basic Plan</h3>
+          <p class="tier-desc">Essential AI attendance and turnstile control for single-location gyms.</p>
+
+          <div class="tier-price-box">
+            <span class="price-currency" id="curr-symbol-basic">PKR</span>
+            <span class="price-amount" id="price-basic">14,999</span>
+            <span class="price-cycle">/month</span>
+          </div>
+          <div class="price-subtext" id="subtext-basic">Billed monthly • 1 Gym Branch</div>
+
+          <button class="btn btn-outline-light btn-full" onclick="openDemoModal('BASIC')">
+            Get Started with Basic
+          </button>
+
+          <div class="tier-features-list">
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>1 Gym Branch</strong> included</span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>AI Facial Recognition Check-In</strong> (20+ FPS)</span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Turnstile Gate Relay Control</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>5-Day Free Trial Auto-Lockout</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Member Directory & Profile Logs</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Manual WhatsApp Expiry Reminders</strong></span>
+            </div>
+            <div class="feature-item excluded">
+              <span class="feat-icon">✕</span>
+              <span>Multi-Branch Roaming Passes</span>
+            </div>
+            <div class="feature-item excluded">
+              <span class="feat-icon">✕</span>
+              <span>Gym Cafe POS & Kitchen Khata Tabs</span>
+            </div>
+            <div class="feature-item excluded">
+              <span class="feat-icon">✕</span>
+              <span>Workout Routines & Consistency Heatmaps</span>
+            </div>
+            <div class="feature-item excluded">
+              <span class="feat-icon">✕</span>
+              <span>Cloud MongoDB Atlas Live Sync</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIER 2: PRO PLAN (FEATURED) -->
+        <div class="pricing-card pro-card featured">
+          <div class="popular-ribbon">⭐ MOST POPULAR • GYM GROWTH</div>
+          <div class="card-tier-badge emerald">GROWTH • UP TO 3 BRANCHES</div>
+          <h3 class="tier-name">Pro Plan</h3>
+          <p class="tier-desc">The complete powerhouse for ambitious gym owners with 1-3 branches.</p>
+
+          <div class="tier-price-box">
+            <span class="price-currency" id="curr-symbol-pro">PKR</span>
+            <span class="price-amount" id="price-pro">29,999</span>
+            <span class="price-cycle">/month</span>
+          </div>
+          <div class="price-subtext" id="subtext-pro">Billed monthly • Up to 3 Branches</div>
+
+          <button class="btn btn-primary btn-full" onclick="openDemoModal('PRO')">
+            ⚡ Choose Pro Plan
+          </button>
+
+          <div class="tier-features-list">
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Up to 3 Gym Branches</strong> in your city</span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>City Roaming Passes:</strong> Seamless multi-gym entry</span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Door Roaming Security:</strong> Auto-locks unauthorized entries</span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Member Branch Transfer:</strong> 1-Click database sync</span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Gym Protein Cafe POS & Kitchen Queue</strong></span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Member Khata Tab:</strong> Credit balance & settlement</span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Workout Plans & Consistency Streaks Heatmap</strong></span>
+            </div>
+            <div class="feature-item included highlight">
+              <span class="feat-icon">✓</span>
+              <span><strong>Multi-Branch Executive Analytics & Occupancy</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Cloud MongoDB Atlas Replication</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>1-Click WhatsApp Expiry Alerts</strong></span>
+            </div>
+            <div class="feature-item excluded">
+              <span class="feat-icon">✕</span>
+              <span>Multi-Camera CCTV RTSP Network Stream</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- TIER 3: MAX PLAN -->
+        <div class="pricing-card max-card">
+          <div class="card-tier-badge purple">ENTERPRISE • UNLIMITED SCALE</div>
+          <h3 class="tier-name">Max Plan</h3>
+          <p class="tier-desc">Unlimited scale for multi-city franchises and fitness resort complexes.</p>
+
+          <div class="tier-price-box">
+            <span class="price-currency" id="curr-symbol-max">PKR</span>
+            <span class="price-amount" id="price-max">54,999</span>
+            <span class="price-cycle">/month</span>
+          </div>
+          <div class="price-subtext" id="subtext-max">Billed monthly • Unlimited Branches</div>
+
+          <button class="btn btn-outline-purple btn-full" onclick="openDemoModal('MAX')">
+            👑 Go Enterprise Max
+          </button>
+
+          <div class="tier-features-list">
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Unlimited Branches & Turnstiles</strong> nationwide</span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Multi-Camera CCTV RTSP Stream Network</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Anti-Tailgating Sensor & Turnstile Relay</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Auto-Visitor Face Registration</strong> from CCTV</span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Full Cafe POS + KDS + Unlimited Khata</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Dedicated MongoDB Atlas Cluster</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Custom Domain & White-Label Gym Branding</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>Automated WhatsApp API Bot</strong></span>
+            </div>
+            <div class="feature-item included">
+              <span class="feat-icon">✓</span>
+              <span><strong>24/7 Dedicated Account Manager & On-site Setup</strong></span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive ROI Calculator Section -->
+  <section class="roi-section" id="roi-calculator">
+    <div class="container">
+      <div class="roi-card">
+        <div class="roi-header">
+          <div class="section-badge">INTERACTIVE SAVINGS ESTIMATOR</div>
+          <h2 class="section-heading">How much is your gym losing to shared cards right now?</h2>
+          <p class="section-sub">Adjust the sliders below to see your estimated monthly leakage and payback time.</p>
+        </div>
+
+        <div class="roi-grid">
+          <div class="roi-sliders">
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="slider-members">Total Active Members:</label>
+                <span class="slider-value" id="val-members">350</span>
+              </div>
+              <input type="range" id="slider-members" min="50" max="1500" step="25" value="350" oninput="calculateROI()">
+              <div class="slider-bounds">
+                <span>50 members</span>
+                <span>1,500+ members</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="slider-fee">Average Monthly Fee (<span class="calc-currency-label">PKR</span>):</label>
+                <span class="slider-value" id="val-fee">Rs. 4,500</span>
+              </div>
+              <input type="range" id="slider-fee" min="1500" max="15000" step="500" value="4500" oninput="calculateROI()">
+              <div class="slider-bounds">
+                <span id="bound-fee-min">Rs. 1,500</span>
+                <span id="bound-fee-max">Rs. 15,000+</span>
+              </div>
+            </div>
+
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="slider-branches">Gym Branches Count:</label>
+                <span class="slider-value" id="val-branches">2 Branches</span>
+              </div>
+              <input type="range" id="slider-branches" min="1" max="10" step="1" value="2" oninput="calculateROI()">
+              <div class="slider-bounds">
+                <span>1 Branch</span>
+                <span>10+ Branches</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="roi-result-card">
+            <span class="roi-result-title">ESTIMATED RECOVERABLE REVENUE</span>
+            <div class="roi-money-amount" id="roi-leakage">Rs. 236,250</div>
+            <span class="roi-money-sub">lost every month to card sharing & unpaid entries</span>
+
+            <div class="roi-metrics-list">
+              <div class="roi-metric-item">
+                <span>Recommended Tier:</span>
+                <strong id="roi-plan-badge" class="badge-plan-rec">🥈 Pro Plan</strong>
+              </div>
+              <div class="roi-metric-item">
+                <span>Titan Software Cost:</span>
+                <strong id="roi-software-cost">Rs. 29,999 / mo</strong>
+              </div>
+              <div class="roi-metric-item highlight">
+                <span>Net Monthly Profit Added:</span>
+                <strong id="roi-net-gain" style="color: #10b981;">+Rs. 206,251 / mo</strong>
+              </div>
+              <div class="roi-metric-item">
+                <span>Payback Duration:</span>
+                <strong id="roi-payback-days">4 Days!</strong>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" onclick="openDemoModal('PRO')" style="margin-top: 18px;">
+              🛡️ Stop This Leakage Today
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Detailed Feature Comparison Table with Filter Tabs -->
+  <section class="comparison-section" id="comparison">
+    <div class="container">
+      <div class="section-badge">FULL FEATURE MATRIX</div>
+      <h2 class="section-heading">Detailed comparison across Basic, Pro, and Max</h2>
+      <p class="section-sub">Everything you need to know about what's included in each plan.</p>
+
+      <!-- Category Filter Chips -->
+      <div class="filter-chips-row">
+        <button class="filter-chip active" onclick="filterComparison('all', this)">All Features</button>
+        <button class="filter-chip" onclick="filterComparison('biometrics', this)">🚪 Biometrics & Gates</button>
+        <button class="filter-chip" onclick="filterComparison('multibranch', this)">🏢 Multi-Branch Roaming</button>
+        <button class="filter-chip" onclick="filterComparison('cafe', this)">🥤 Cafe POS & Khata</button>
+        <button class="filter-chip" onclick="filterComparison('cloud', this)">☁️ Cloud & Backups</button>
+      </div>
+
+      <div class="table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th class="col-feature">Feature / Capability</th>
+              <th class="col-tier">🥉 Basic Plan</th>
+              <th class="col-tier featured-col">🥈 Pro Plan</th>
+              <th class="col-tier">🥇 Max Plan</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="category-header" data-cat="biometrics"><td colspan="4">🏢 Branch & Hardware Architecture</td></tr>
+            <tr data-cat="biometrics">
+              <td>Gym Branches Allowed</td>
+              <td>1 Branch</td>
+              <td class="featured-col"><strong>Up to 3 Branches</strong></td>
+              <td><strong>Unlimited Branches</strong></td>
+            </tr>
+            <tr data-cat="biometrics">
+              <td>Face Recognition FPS Speed</td>
+              <td>20+ FPS (HD)</td>
+              <td class="featured-col"><strong>20+ FPS (HD)</strong></td>
+              <td><strong>30+ FPS (Multi-GPU Ready)</strong></td>
+            </tr>
+            <tr data-cat="biometrics">
+              <td>Turnstile Barrier Support</td>
+              <td>Tripod Turnstiles</td>
+              <td class="featured-col">Tripod & Speed Gates</td>
+              <td>All Turnstiles + Anti-Tailgating</td>
+            </tr>
+            <tr data-cat="biometrics">
+              <td>CCTV IP Camera Network (RTSP)</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="no">✕</span></td>
+              <td><span class="yes">✓ Multi-CCTV Streams</span></td>
+            </tr>
+
+            <tr class="category-header" data-cat="multibranch"><td colspan="4">🌐 Multi-Branch Security & Passes</td></tr>
+            <tr data-cat="multibranch">
+              <td>City Roaming Pass Access</td>
+              <td><span class="no">✕ (Single branch only)</span></td>
+              <td class="featured-col"><span class="yes">✓ Included (All 3 branches)</span></td>
+              <td><span class="yes">✓ Nationwide Network Access</span></td>
+            </tr>
+            <tr data-cat="multibranch">
+              <td>Door Roaming Denial Alert</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="yes">✓ Instant Turnstile Lock</span></td>
+              <td><span class="yes">✓ Instant Turnstile Lock</span></td>
+            </tr>
+            <tr data-cat="multibranch">
+              <td>Member Branch Transfer (1-Click)</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="yes">✓ Auto-Sync Database</span></td>
+              <td><span class="yes">✓ Auto-Sync Database</span></td>
+            </tr>
+
+            <tr class="category-header" data-cat="cafe"><td colspan="4">🥤 Gym Cafe POS & Revenue</td></tr>
+            <tr data-cat="cafe">
+              <td>Point of Sale & Catalog</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="yes">✓ Full Cafe POS</span></td>
+              <td><span class="yes">✓ Multi-Station POS</span></td>
+            </tr>
+            <tr data-cat="cafe">
+              <td>Live Kitchen Display Queue (KDS)</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="yes">✓ Included</span></td>
+              <td><span class="yes">✓ Included</span></td>
+            </tr>
+            <tr data-cat="cafe">
+              <td>Member Khata Tab & Fast Settle</td>
+              <td><span class="no">✕</span></td>
+              <td class="featured-col"><span class="yes">✓ Outstanding Alerts</span></td>
+              <td><span class="yes">✓ Outstanding Alerts + Limits</span></td>
+            </tr>
+
+            <tr class="category-header" data-cat="cloud"><td colspan="4">☁️ Cloud, Backups & Support</td></tr>
+            <tr data-cat="cloud">
+              <td>Database Sync</td>
+              <td>Local SQLite/JSON</td>
+              <td class="featured-col"><strong>MongoDB Atlas Cloud</strong></td>
+              <td><strong>Dedicated Atlas Cluster</strong></td>
+            </tr>
+            <tr data-cat="cloud">
+              <td>WhatsApp Reminders</td>
+              <td>Manual 1-Click</td>
+              <td class="featured-col">Automated Links</td>
+              <td>Automated Official Bot API</td>
+            </tr>
+            <tr data-cat="cloud">
+              <td>Technical Support</td>
+              <td>Standard Email</td>
+              <td class="featured-col">Priority Phone & WhatsApp</td>
+              <td>24/7 Dedicated Account Lead</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Verified Gym Case Studies & Testimonials -->
+  <section class="testimonials-section">
+    <div class="container">
+      <div class="section-badge">PROVEN IN COMMERCIAL GYMS</div>
+      <h2 class="section-heading">Trusted by Pakistan's fastest-growing fitness clubs</h2>
+
+      <div class="testimonial-grid">
+        <div class="testi-card">
+          <div class="stars">★★★★★</div>
+          <p>"Before Titan Gym OS, members were constantly passing RFID cards to friends. Within 48 hours of installing face turnstiles, our unpaid entries dropped to ZERO and recurring memberships surged 32%."</p>
+          <div class="testi-author">
+            <div class="author-avatar">🏋️</div>
+            <div>
+              <strong>Hamza Sheikh</strong>
+              <span>Managing Director, Iron Core Fitness (Lahore)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="testi-card featured">
+          <div class="stars">★★★★★</div>
+          <p>"The Pro Plan multi-branch roaming is brilliant. Our members can workout at our Gulberg and DHA gyms with the same face scan, and the door locks instantly if someone without roaming tries to sneak in."</p>
+          <div class="testi-author">
+            <div class="author-avatar">🏆</div>
+            <div>
+              <strong>Khurram Jahangir</strong>
+              <span>CEO, Gold Standard Gym Chain (3 Branches)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="testi-card">
+          <div class="stars">★★★★★</div>
+          <p>"The Protein Cafe POS with Member Khata tab increased our cafe sales by 45%. Members grab their post-workout shakes on tab without carrying wallets, and settle it once a month."</p>
+          <div class="testi-author">
+            <div class="author-avatar">🥤</div>
+            <div>
+              <strong>Tariq Rasheed</strong>
+              <span>Operations Lead, Titan Gym Club</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Hardware Compatibility Section -->
+  <section class="hardware-section" id="hardware">
+    <div class="container">
+      <div class="section-badge">PLUG & PLAY HARDWARE</div>
+      <h2 class="section-heading">Works with standard commercial gym equipment</h2>
+      <p class="section-sub">No proprietary vendor lock-in. Titan Gym OS connects to existing hardware via USB, Ethernet, and Relays.</p>
+
+      <div class="hardware-grid">
+        <div class="hardware-card">
+          <div class="hw-icon">🚪</div>
+          <h4>Turnstiles & Speed Gates</h4>
+          <p>Direct electronic relay output (COM/NO/NC) compatible with ZKTeco, Turbo, Hikvision, and custom barrier gates.</p>
+        </div>
+        <div class="hardware-card">
+          <div class="hw-icon">📹</div>
+          <h4>CCTV & RTSP Cameras</h4>
+          <p>Supports any RTSP network IP camera (Dahua, Hikvision, CP Plus, Axis) at 1080p/720p 25 FPS.</p>
+        </div>
+        <div class="hardware-card">
+          <div class="hw-icon">📷</div>
+          <h4>USB & Laptop Webcams</h4>
+          <p>Instant DirectShow acceleration for counter-top desk check-ins with standard 1080p webcams.</p>
+        </div>
+        <div class="hardware-card">
+          <div class="hw-icon">🧾</div>
+          <h4>POS Thermal Printers</h4>
+          <p>Instant 58mm and 80mm thermal receipt printing for Gym Cafe orders and membership payment slips.</p>
+        </div>
+      </div>
+
+      <!-- Trust Badges Row -->
+      <div class="trust-badges-row">
+        <div class="trust-badge-item">🔒 256-Bit Encrypted Database</div>
+        <div class="trust-badge-item">⚡ 100% Offline-Capable Local Node</div>
+        <div class="trust-badge-item">🏢 Multi-Branch Cloud Atlas Sync</div>
+        <div class="trust-badge-item">🛡️ Biometric Privacy Compliant</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="faq-section" id="faq">
+    <div class="container">
+      <div class="section-badge">FREQUENTLY ASKED QUESTIONS</div>
+      <h2 class="section-heading">Everything gym owners ask before switching</h2>
+
+      <div class="faq-accordion">
+        <div class="faq-item active">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Will it work if the gym's internet goes down?</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Yes, 100%! All facial recognition, turnstile relays, attendance logging, and cafe transactions run locally on your gym's workstation computer. If internet drops, members can still scan in seamlessly. Once internet restores, data automatically syncs to MongoDB Atlas.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>What hardware do I need to run this?</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>You only need a standard Core i5 or i7 computer (or laptop) running Windows 10/11 with 8GB RAM, plus a webcam or IP camera aimed at your entrance, and an optional relay module to trigger your turnstile gate.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>How does the 5-Day Free Trial lock work?</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Whenever an unregistered guest or trial member walks in, the AI recognizes their unique facial biometric profile. Once they visit for 5 separate days, the turnstile automatically locks with a red alert banner saying "Trial Over - Membership Required", stopping free loaders permanently.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>Can I upgrade from Basic to Pro when opening a 2nd branch?</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Absolutely! You can start on the Basic Plan for your first branch and upgrade to Pro with 1 click whenever you expand. All your existing members, attendance history, and settings carry over seamlessly.</p>
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <button class="faq-question" onclick="toggleFaq(this)">
+            <span>How long does installation and setup take?</span>
+            <span class="faq-toggle">+</span>
+          </button>
+          <div class="faq-answer">
+            <p>Typically under 45 minutes! Our team assists you via remote session or on-site engineer visit to connect your cameras, turnstiles, import your existing members from Excel, and train your staff.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA Banner Section -->
+  <section class="cta-banner-section">
+    <div class="container">
+      <div class="cta-card">
+        <h2>Ready to eliminate shared cards and modernize your gym?</h2>
+        <p>Join forward-thinking gym owners across the city. Schedule your live demonstration today.</p>
+        <div class="cta-buttons">
+          <button class="btn btn-primary btn-lg" onclick="openDemoModal('PRO')">
+            🚀 Schedule Free Live Demo
+          </button>
+          <a href="https://wa.me/923001234567?text=Hi%20Titan%20Gym%20OS%20team,%20I%20want%20to%20see%20a%20live%20turnstile%20demo%20for%20my%20gym" target="_blank" class="btn btn-whatsapp btn-lg">
+            💬 Chat on WhatsApp
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-badge-icon">🛡️</div>
+          <span class="brand-name">TITAN <span class="accent-text">GYM OS</span></span>
+          <p>The Intelligent AI Facial Recognition Turnstile & Multi-Branch Operating System for Commercial Fitness Centers.</p>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Plans</h4>
+          <a href="#pricing">🥉 Basic Plan (1 Branch)</a>
+          <a href="#pricing">🥈 Pro Plan (3 Branches)</a>
+          <a href="#pricing">🥇 Max Plan (Enterprise)</a>
+          <a href="#roi-calculator">ROI Estimator</a>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Platform</h4>
+          <a href="#features">AI Turnstiles</a>
+          <a href="#network-demo">Multi-Branch Roaming</a>
+          <a href="#features">Gym Cafe POS</a>
+          <a href="#hardware">Hardware Specs</a>
+        </div>
+
+        <div class="footer-links-col">
+          <h4>Direct Contact</h4>
+          <p>📞 Sales: +92 300 1234567</p>
+          <p>📧 demo@titangymos.com</p>
+          <p>📍 Tech Hub, Commercial Phase 5, Lahore</p>
+          <a href="http://localhost:3001" target="_blank" class="client-portal-btn">
+            🔐 Launch Gym Management System ➔
+          </a>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <p>© 2026 Titan Gym OS Inc. All rights reserved. Precision biometric intelligence for fitness enterprises.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Book Live Demo Modal -->
+  <div class="modal-backdrop" id="demo-modal" onclick="closeDemoModal(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <div>
+          <h3>Book a 1-on-1 Live Demo</h3>
+          <span class="modal-sub">Experience Titan Gym OS on your turnstiles & cameras</span>
+        </div>
+        <button class="modal-close" onclick="closeDemoModal()">✕</button>
+      </div>
+
+      <form id="demo-form" onsubmit="submitDemoForm(event)">
+        <div class="form-group">
+          <label for="lead-gym-name">Gym / Fitness Club Name *</label>
+          <input type="text" id="lead-gym-name" placeholder="e.g. Iron Fitness Arena" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="lead-contact-name">Owner / Manager Name *</label>
+            <input type="text" id="lead-contact-name" placeholder="e.g. Asad Khan" required>
+          </div>
+          <div class="form-group">
+            <label for="lead-phone">WhatsApp / Phone Number *</label>
+            <input type="tel" id="lead-phone" placeholder="e.g. 0300 1234567" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="lead-city">City *</label>
+            <input type="text" id="lead-city" placeholder="e.g. Lahore, Islamabad, Karachi" required>
+          </div>
+          <div class="form-group">
+            <label for="lead-branches">Number of Branches</label>
+            <select id="lead-branches">
+              <option value="1">1 Branch (Basic)</option>
+              <option value="2">2 Branches (Pro)</option>
+              <option value="3" selected>3 Branches (Pro)</option>
+              <option value="5">4-5 Branches (Max)</option>
+              <option value="10">6+ Branches (Max Enterprise)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="lead-plan">Interested Subscription Plan</label>
+          <select id="lead-plan">
+            <option value="BASIC">🥉 Basic Plan (1 Branch • Rs. 14,999/mo)</option>
+            <option value="PRO" selected>🥈 Pro Plan (Up to 3 Branches • Rs. 29,999/mo)</option>
+            <option value="MAX">🥇 Max Plan (Unlimited • Rs. 54,999/mo)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="lead-notes">Special Requirements / Notes (Optional)</label>
+          <textarea id="lead-notes" rows="2" placeholder="e.g. We have 2 turnstiles and want to connect Dahua CCTV cameras..."></textarea>
+        </div>
+
+        <div id="demo-form-feedback" class="form-feedback"></div>
+
+        <button type="submit" class="btn btn-primary btn-full" id="btn-submit-lead">
+          ✓ Confirm & Request Live Demo
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Floating Sticky Action Bar on Scroll -->
+  <div class="floating-quick-bar" id="quick-bar">
+    <div class="quick-bar-left">
+      <span class="quick-logo">🛡️ <strong>Titan Gym OS</strong></span>
+      <span class="quick-pricing-pill">From Rs. 14,999/mo</span>
+    </div>
+    <div class="quick-bar-right">
+      <button class="btn btn-outline-light btn-sm" onclick="openDemoModal('BASIC')">🥉 Basic</button>
+      <button class="btn btn-primary btn-sm" onclick="openDemoModal('PRO')">🥈 Pro (Popular)</button>
+      <button class="btn btn-outline-purple btn-sm" onclick="openDemoModal('MAX')">🥇 Max</button>
+      <a href="https://wa.me/923001234567?text=Hi%20Titan%20Gym%20OS%20team,%20tell%20me%20more%20about%20your%20plans" target="_blank" class="quick-wa-btn" title="Chat on WhatsApp">💬</a>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

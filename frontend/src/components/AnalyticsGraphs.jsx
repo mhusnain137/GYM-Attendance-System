@@ -1,22 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import './AnalyticsGraphs.css';
 
 function AnalyticsGraphs() {
   const { isReceptionist } = useAuth();
+  const { selectedBranchId, branches, setSelectedBranchId } = useBranch();
   const [analyticsData, setAnalyticsData] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const totalNetworkRevenue = (analyticsData?.branches_overview || []).reduce((acc, b) => acc + (b.revenue || 0), 0);
+  const totalNetworkVisits = (analyticsData?.branches_overview || []).reduce((acc, b) => acc + (b.today_visits || 0), 0);
+  const totalNetworkMembers = (analyticsData?.branches_overview || []).reduce((acc, b) => acc + (b.members || 0), 0);
 
   useEffect(() => {
     fetchAnalytics();
     const interval = setInterval(fetchAnalytics, 15000);
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchAnalytics = async () => {
     try {
-      const res = await axios.get('/api/analytics/dashboard');
+      const res = await axios.get('/api/analytics/dashboard', {
+        params: { branch_id: selectedBranchId }
+      });
       if (res.data) {
         setAnalyticsData(res.data);
       }
@@ -211,6 +219,93 @@ function AnalyticsGraphs() {
           )}
         </div>
       </div>
+
+      {/* Multi-Branch Executive Network Performance */}
+      {analyticsData?.branches_overview && analyticsData.branches_overview.length > 0 && (
+        <div className="card branch-matrix-card-wrap" style={{ marginTop: '1.5rem', width: '100%' }}>
+          <div className="branch-matrix-header-bar">
+            <div>
+              <h3>🏢 Multi-Branch Network Executive Matrix</h3>
+              <p>Real-time cross-branch footfall, revenue contribution, and turnstile occupancy</p>
+            </div>
+            <div className="branch-matrix-kpis">
+              <div className="bm-kpi-chip">
+                <span>Network Members:</span>
+                <strong>{totalNetworkMembers}</strong>
+              </div>
+              <div className="bm-kpi-chip">
+                <span>Today's Check-ins:</span>
+                <strong style={{ color: '#10b981' }}>{totalNetworkVisits}</strong>
+              </div>
+              <div className="bm-kpi-chip">
+                <span>Network Revenue:</span>
+                <strong style={{ color: '#059669' }}>{formatCurrency(totalNetworkRevenue)}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="branch-matrix-grid">
+            {analyticsData.branches_overview.map((br) => {
+              const revShare = totalNetworkRevenue > 0 ? Math.round((br.revenue / totalNetworkRevenue) * 100) : 0;
+              const isSelected = selectedBranchId === br.branch_id;
+              const capacity = br.capacity || 200;
+              const occupancyPct = Math.min(100, Math.round((br.today_visits / capacity) * 100));
+
+              return (
+                <div key={br.branch_id} className={`branch-card-item ${isSelected ? 'active-focused' : ''}`}>
+                  <div className="bc-top-row">
+                    <div>
+                      <h4>{br.name}</h4>
+                      <span className="bc-city">📍 {br.city} • <small>{br.branch_id}</small></span>
+                    </div>
+                    <span className="bc-status-badge online">
+                      ● CCTV LIVE
+                    </span>
+                  </div>
+
+                  <div className="bc-stats-row">
+                    <div className="bc-stat">
+                      <span className="bc-stat-num">{br.members}</span>
+                      <span className="bc-stat-label">Active Members</span>
+                    </div>
+                    <div className="bc-stat">
+                      <span className="bc-stat-num green">{br.today_visits}</span>
+                      <span className="bc-stat-label">Today Check-ins</span>
+                    </div>
+                    <div className="bc-stat">
+                      <span className="bc-stat-num">{formatCurrency(br.revenue)}</span>
+                      <span className="bc-stat-label">Total Revenue</span>
+                    </div>
+                  </div>
+
+                  <div className="bc-occupancy-wrap">
+                    <div className="bc-occ-header">
+                      <span>Daily Capacity Usage:</span>
+                      <strong>{occupancyPct}% ({br.today_visits}/{capacity})</strong>
+                    </div>
+                    <div className="bc-occ-bar">
+                      <div className="bc-occ-fill" style={{ width: `${occupancyPct}%` }}></div>
+                    </div>
+                  </div>
+
+                  <div className="bc-footer-row">
+                    <span className="bc-share-tag" title="Share of network revenue">
+                      📊 {revShare}% of Network Revenue
+                    </span>
+                    <button 
+                      className={`btn-bc-focus ${isSelected ? 'selected' : ''}`}
+                      onClick={() => setSelectedBranchId(isSelected ? 'all' : br.branch_id)}
+                      title="Filter dashboard and feeds to this branch"
+                    >
+                      {isSelected ? '✓ Active View' : 'Focus Branch ➔'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

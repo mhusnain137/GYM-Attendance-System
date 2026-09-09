@@ -175,6 +175,7 @@ DATA_FILE_MAP = {
     "workout_templates": "workout_templates.json",
     "workout_logs": "workout_logs.json",
     "custom_exercises": "custom_exercises.json",
+    "branches": "branches.json",
 }
 
 DEFAULT_ADMIN = [

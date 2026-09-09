@@ -3,6 +3,7 @@ import axios from 'axios';
 import { getPersonMembership, calculateMembershipInfo } from '../utils/membershipUtils';
 import MemberProfileModal from './MemberProfileModal';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import './People.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -32,6 +33,7 @@ function PersonAvatar({ name, personId, size = 54, className = '' }) {
 
 function People() {
   const { canDelete, isAdmin, isManager, isReceptionist } = useAuth();
+  const { selectedBranchId, branches } = useBranch();
   const [people, setPeople] = useState([]);
   const [memberships, setMemberships] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -49,10 +51,11 @@ function People() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteMessage, setDeleteMessage] = useState('');
 
-  // Rename modal state
+  // Rename & Branch Transfer modal state
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [personToRename, setPersonToRename] = useState(null);
   const [newName, setNewName] = useState('');
+  const [newBranchId, setNewBranchId] = useState('');
   const [isRenaming, setIsRenaming] = useState(false);
 
   // Photo upload modal state
@@ -86,14 +89,14 @@ function People() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const [peopleRes, memRes] = await Promise.all([
-        axios.get('/api/people'),
-        axios.get('/api/memberships').catch(() => ({ data: [] }))
+        axios.get('/api/people', { params: { branch_id: selectedBranchId } }),
+        axios.get('/api/memberships', { params: { branch_id: selectedBranchId } }).catch(() => ({ data: [] }))
       ]);
       setPeople(peopleRes.data || []);
       setMemberships(memRes.data || []);
@@ -145,10 +148,11 @@ function People() {
     setDeleteMessage('');
   };
 
-  // Rename Handlers
+  // Rename & Branch Transfer Handlers
   const handleRenameClick = (person) => {
     setPersonToRename(person);
     setNewName(person.name || '');
+    setNewBranchId(person.home_branch_id || person.branch_id || 'BR-MAIN-001');
     setShowRenameModal(true);
   };
 
@@ -158,19 +162,23 @@ function People() {
     setIsRenaming(true);
     try {
       const personId = personToRename.id || personToRename.person_id;
-      const response = await axios.put(`/api/people/${personId}`, { name: newName.trim() });
+      const response = await axios.put(`/api/people/${personId}`, {
+        name: newName.trim(),
+        branch_id: newBranchId
+      });
       if (response.data.success) {
-        setDeleteMessage(`✓ Successfully renamed to "${newName.trim()}"`);
+        const branchName = branches.find(b => b.branch_id === newBranchId)?.name || 'Branch';
+        setDeleteMessage(`✓ Successfully updated "${newName.trim()}" (Assigned: ${branchName})`);
         await fetchData();
         setShowRenameModal(false);
         setPersonToRename(null);
         setTimeout(() => setDeleteMessage(''), 3500);
       } else {
-        alert(response.data.message || 'Failed to rename person');
+        alert(response.data.message || 'Failed to update person');
       }
     } catch (error) {
-      console.error('Error renaming person:', error);
-      alert('Failed to rename person. Please try again.');
+      console.error('Error updating person:', error);
+      alert('Failed to update person. Please try again.');
     } finally {
       setIsRenaming(false);
     }
@@ -604,6 +612,11 @@ function People() {
                   <span className="embedding-tag" title={`${person.sampleCount} face embedding samples stored`}>
                     {person.sampleCount > 1 ? `📹 ${person.sampleCount} CCTV Angles` : `📷 1 Sample`}
                   </span>
+
+                  {/* Branch Tag */}
+                  <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '4px', background: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                    🏢 {branches.find(b => b.branch_id === (person.home_branch_id || person.branch_id))?.name || 'Main Branch'}
+                  </span>
                 </div>
 
                 {/* Person Meta Details */}
@@ -733,12 +746,12 @@ function People() {
         </div>
       )}
 
-      {/* Rename Modal */}
+      {/* Edit Member & Branch Transfer Modal */}
       {showRenameModal && personToRename && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '440px' }}>
             <div className="modal-header">
-              <h2>✏️ Rename Person</h2>
+              <h2>✏️ Edit Member & Branch</h2>
               <button className="close-btn" onClick={() => setShowRenameModal(false)}>✕</button>
             </div>
             <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
@@ -746,12 +759,12 @@ function People() {
               <div style={{ textAlign: 'center' }}>
                 <span className="person-id-badge">{personToRename.person_id}</span>
                 <p style={{ margin: '6px 0 0 0', color: 'var(--c-slate-light)', fontSize: '0.86rem', fontWeight: 600 }}>
-                  Update name for this recognized member
+                  Update recognized name or transfer home branch
                 </p>
               </div>
               <div style={{ width: '100%' }}>
                 <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--c-slate)', fontWeight: 700 }}>
-                  Enter Full Name:
+                  Full Name:
                 </label>
                 <input 
                   type="text" 
@@ -760,8 +773,27 @@ function People() {
                   value={newName} 
                   onChange={(e) => setNewName(e.target.value)}
                   autoFocus
-                  style={{ width: '100%' }}
+                  style={{ width: '100%', marginBottom: '14px' }}
                 />
+
+                <label style={{ display: 'block', marginBottom: '6px', fontSize: '0.84rem', color: 'var(--c-slate)', fontWeight: 700 }}>
+                  🏢 Assigned Home Branch:
+                </label>
+                <select
+                  className="sort-select"
+                  value={newBranchId}
+                  onChange={(e) => setNewBranchId(e.target.value)}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid var(--c-sand-dark)', background: '#fff', fontSize: '0.9rem', fontWeight: 600, color: 'var(--c-slate)' }}
+                >
+                  {branches.map(b => (
+                    <option key={b.branch_id} value={b.branch_id}>
+                      🏢 {b.name} ({b.branch_id})
+                    </option>
+                  ))}
+                </select>
+                <p style={{ margin: '6px 0 0 0', fontSize: '0.78rem', color: '#64748b' }}>
+                  ℹ️ Changing this will transfer the member's profile & attendance attribution to this branch.
+                </p>
               </div>
             </div>
             <div className="modal-footer">
@@ -769,7 +801,7 @@ function People() {
                 Cancel
               </button>
               <button className="button button-primary" onClick={handleConfirmRename} disabled={isRenaming || !newName.trim()}>
-                {isRenaming ? 'Saving...' : 'Save Name'}
+                {isRenaming ? 'Saving...' : 'Save & Transfer'}
               </button>
             </div>
           </div>

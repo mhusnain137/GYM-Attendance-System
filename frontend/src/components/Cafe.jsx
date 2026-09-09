@@ -3,6 +3,7 @@ import axios from 'axios';
 import './Cafe.css';
 import { openWhatsApp, generateCafeWhatsAppReceipt } from '../utils/whatsappUtils';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 
 const CATEGORIES = [
   { id: 'ALL', label: 'All Items', icon: '⚡' },
@@ -30,6 +31,7 @@ const ADDON_OPTIONS = [
 
 function Cafe() {
   const { canDelete, isReceptionist } = useAuth();
+  const { selectedBranchId, branches } = useBranch();
   const [activeTab, setActiveTab] = useState('POS'); // 'POS' | 'ORDERS' | 'INVENTORY' | 'ANALYTICS'
   
   // Pre-Order Approval Modal State
@@ -67,6 +69,13 @@ function Cafe() {
   const [whatsappModalOrder, setWhatsappModalOrder] = useState(null);
   const [whatsappModalPhone, setWhatsappModalPhone] = useState('');
 
+  // Settle Tab Modal State
+  const [showSettleModal, setShowSettleModal] = useState(false);
+  const [settleAmount, setSettleAmount] = useState(0);
+  const [settleMethod, setSettleMethod] = useState('CASH');
+  const [isSettling, setIsSettling] = useState(false);
+  const [memberships, setMemberships] = useState([]);
+
   // Inventory Modal State
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -102,12 +111,18 @@ function Cafe() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const getBranchName = (branchId) => {
+    if (!branchId || branchId === 'all') return 'All Branches';
+    const b = branches.find(item => item.branch_id === branchId || item.id === branchId);
+    return b ? (b.name || b.branch_name) : 'Titan Gym (Main)';
+  };
+
   useEffect(() => {
     fetchProducts();
     fetchOrders();
     fetchAnalytics();
     fetchPeople();
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchProducts = async () => {
     try {
@@ -126,7 +141,11 @@ function Cafe() {
 
   const fetchOrders = async () => {
     try {
-      const res = await axios.get('/api/cafe/orders');
+      const params = {};
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        params.branch_id = selectedBranchId;
+      }
+      const res = await axios.get('/api/cafe/orders', { params });
       if (res.data) {
         if (Array.isArray(res.data)) {
           setOrders(res.data);
@@ -141,7 +160,11 @@ function Cafe() {
 
   const fetchAnalytics = async () => {
     try {
-      const res = await axios.get('/api/cafe/analytics');
+      const params = {};
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        params.branch_id = selectedBranchId;
+      }
+      const res = await axios.get('/api/cafe/analytics', { params });
       if (res.data) {
         setAnalytics(res.data);
       }
@@ -152,14 +175,43 @@ function Cafe() {
 
   const fetchPeople = async () => {
     try {
-      const res = await axios.get('/api/people');
-      if (res.data && Array.isArray(res.data)) {
-        setPeople(res.data);
-      } else if (res.data && res.data.people) {
-        setPeople(res.data.people);
+      const params = {};
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        params.branch_id = selectedBranchId;
       }
+      const [peopleRes, memRes] = await Promise.all([
+        axios.get('/api/people', { params }),
+        axios.get('/api/memberships').catch(() => ({ data: [] }))
+      ]);
+      if (peopleRes.data && Array.isArray(peopleRes.data)) {
+        setPeople(peopleRes.data);
+      } else if (peopleRes.data && peopleRes.data.people) {
+        setPeople(peopleRes.data.people);
+      }
+      setMemberships(memRes.data || []);
     } catch (err) {
       console.error('Error fetching members:', err);
+    }
+  };
+
+  const handleSettleTab = async () => {
+    if (!selectedMember || !settleAmount || settleAmount <= 0) return;
+    const pid = selectedMember.id || selectedMember.person_id;
+    setIsSettling(true);
+    try {
+      const res = await axios.post(`/api/cafe/members/${pid}/settle-tab`, {
+        amount_paid: Number(settleAmount),
+        payment_method: settleMethod
+      });
+      alert(res.data.message || 'Tab settled successfully!');
+      setShowSettleModal(false);
+      fetchPeople();
+      fetchOrders();
+      fetchAnalytics();
+    } catch (err) {
+      alert('Failed to settle tab: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setIsSettling(false);
     }
   };
 
@@ -260,9 +312,10 @@ function Cafe() {
       alert('No order records available to export.');
       return;
     }
-    const headers = ['Order ID', 'Date & Time', 'Customer Name', 'Phone', 'Items', 'Total (PKR)', 'Payment Method', 'Status', 'Served By'];
+    const headers = ['Order ID', 'Branch', 'Date & Time', 'Customer Name', 'Phone', 'Items', 'Total (PKR)', 'Payment Method', 'Status', 'Served By'];
     const rows = orders.map(o => [
       o.id,
+      `"${getBranchName(o.branch_id)}"`,
       `"${new Date(o.created_at).toLocaleString()}"`,
       `"${(o.customer_name || '').replace(/"/g, '""')}"`,
       `"${o.customer_phone || ''}"`,
@@ -327,6 +380,7 @@ function Cafe() {
       : (walkinPhone.trim() || '');
 
     const personId = customerType === 'MEMBER' ? (selectedMember.id || selectedMember.person_id) : null;
+    const activeBranch = selectedBranchId && selectedBranchId !== 'all' ? selectedBranchId : 'BR-MAIN-001';
 
     const payload = {
       person_id: personId,
@@ -339,6 +393,7 @@ function Cafe() {
       payment_method: paymentMethod,
       payment_status: paymentMethod === 'MEMBER_TAB' ? 'UNPAID_TAB' : 'PAID',
       order_status: 'COMPLETED',
+      branch_id: activeBranch,
       notes: '',
       served_by: 'Front Desk Staff' // RBAC ready
     };
@@ -485,6 +540,11 @@ function Cafe() {
           <h2>🏋️ TITAN NUTRITION & CAFE POS</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
             Protein Bar, Pre-Workout Smoothies & Health Supplement Counter
+            {selectedBranchId && selectedBranchId !== 'all' && (
+              <span className="cafe-header-branch-pill" style={{ marginLeft: '10px', background: 'rgba(135,95,69,0.12)', color: 'var(--c-mocha, #875F45)', padding: '2px 9px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' }}>
+                🏢 Active Branch: {getBranchName(selectedBranchId)}
+              </span>
+            )}
           </p>
         </div>
         <div className="cafe-tabs cafe-header-actions">
@@ -629,6 +689,10 @@ function Cafe() {
                 </button>
               </div>
 
+              <div className="pos-serving-branch-banner" style={{ background: 'rgba(135,95,69,0.08)', border: '1px solid rgba(135,95,69,0.2)', padding: '6px 10px', borderRadius: '8px', fontSize: '0.8rem', color: 'var(--c-mocha, #875F45)', fontWeight: '700', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                🏢 Serving Branch: <strong>{getBranchName(selectedBranchId)}</strong>
+              </div>
+
               {customerType === 'MEMBER' ? (
                 <div className="member-search-select">
                   <select 
@@ -639,19 +703,63 @@ function Cafe() {
                     }}
                   >
                     <option value="">-- Choose Member (ID / Name) --</option>
-                    {people.map(p => (
-                      <option key={p.id || p.person_id} value={p.id || p.person_id}>
-                        {p.name} ({p.id || p.person_id})
-                      </option>
-                    ))}
+                    {people
+                      .filter(p => selectedBranchId === 'all' || (p.home_branch_id || p.branch_id || 'BR-MAIN-001') === selectedBranchId)
+                      .map(p => (
+                        <option key={p.id || p.person_id} value={p.id || p.person_id}>
+                          {p.name} ({p.id || p.person_id}) {selectedBranchId === 'all' ? `• ${getBranchName(p.home_branch_id || p.branch_id)}` : ''}
+                        </option>
+                      ))}
                   </select>
 
-                  {selectedMember && (
-                    <div className="member-tab-info">
-                      <span>👤 {selectedMember.name}</span>
-                      <span>Phone: {selectedMember.phone || 'N/A'}</span>
-                    </div>
-                  )}
+                  {selectedMember && (() => {
+                    const activeMem = memberships.find(m => (m.person_id || '').toLowerCase() === (selectedMember.id || selectedMember.person_id || '').toLowerCase());
+                    const tabBal = Number(activeMem?.cafe_tab_balance || 0);
+
+                    return (
+                      <div className="member-tab-info" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>👤 {selectedMember.name}</span>
+                          <span>Phone: {selectedMember.phone || 'N/A'}</span>
+                        </div>
+                        {tabBal > 0 && (
+                          <div style={{
+                            marginTop: '4px',
+                            padding: '6px 10px',
+                            borderRadius: '6px',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.25)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#dc2626' }}>
+                              ⚠️ Outstanding Khata Tab: Rs. {tabBal}
+                            </span>
+                            <button
+                              type="button"
+                              style={{
+                                background: '#dc2626',
+                                color: '#ffffff',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '3px 8px',
+                                fontSize: '0.74rem',
+                                fontWeight: 700,
+                                cursor: 'pointer'
+                              }}
+                              onClick={() => {
+                                setSettleAmount(tabBal);
+                                setShowSettleModal(true);
+                              }}
+                            >
+                              💳 Settle Tab
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ) : (
                 <div className="walkin-inputs" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -897,17 +1005,24 @@ function Cafe() {
                 const isToday = (o.created_at || '').startsWith(new Date().toISOString().substring(0, 10));
                 const matchDate = ordersDateFilter === 'today' ? isToday : true;
                 const matchStatus = ordersStatusFilter === 'ALL' || o.order_status === ordersStatusFilter;
+                const matchBranch = !selectedBranchId || selectedBranchId === 'all' || (o.branch_id || 'branch_main') === selectedBranchId;
                 const matchSearch = !ordersSearchQuery || 
                   o.id.toLowerCase().includes(ordersSearchQuery.toLowerCase()) || 
-                  (o.customer_name || '').toLowerCase().includes(ordersSearchQuery.toLowerCase());
-                return matchDate && matchStatus && matchSearch;
+                  (o.customer_name || '').toLowerCase().includes(ordersSearchQuery.toLowerCase()) ||
+                  (getBranchName(o.branch_id) || '').toLowerCase().includes(ordersSearchQuery.toLowerCase());
+                return matchDate && matchStatus && matchBranch && matchSearch;
               })
               .map(ord => (
                 <div key={ord.id} className="order-ticket-card">
                   <div className="order-ticket-header">
                     <div>
-                      <span className="order-id-badge">{ord.id}</span>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span className="order-id-badge">{ord.id}</span>
+                        <span className="cafe-order-branch-pill" title={`Branch: ${getBranchName(ord.branch_id)}`} style={{ background: 'rgba(135,95,69,0.08)', color: 'var(--c-mocha, #875F45)', border: '1px solid rgba(135,95,69,0.2)', padding: '1px 6px', borderRadius: '4px', fontSize: '0.72rem', fontWeight: '700' }}>
+                          🏢 {getBranchName(ord.branch_id)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
                         {new Date(ord.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </div>
                     </div>
@@ -1429,9 +1544,11 @@ function Cafe() {
             <div className="receipt-slip-preview" id="thermal-receipt">
               <div style={{ textAlign: 'center', fontWeight: 'bold' }}>
                 TITAN GYM CAFE & NUTRITION<br />
+                <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--c-mocha, #875F45)' }}>🏢 {getBranchName(completedOrder.branch_id)}</span><br />
                 --------------------------------
               </div>
               <div>Receipt: #{completedOrder.id}</div>
+              <div>Branch: {getBranchName(completedOrder.branch_id)}</div>
               <div>Date: {new Date(completedOrder.created_at).toLocaleString()}</div>
               <div>Customer: {completedOrder.customer_name}</div>
               <div>--------------------------------</div>
@@ -1825,6 +1942,127 @@ function Cafe() {
               >
                 ✓ Confirm Payment & Send to Kitchen
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Settle Khata Tab Modal */}
+      {showSettleModal && selectedMember && (
+        <div className="customizer-backdrop" style={{ zIndex: 9999 }}>
+          <div className="customizer-card" style={{ maxWidth: '440px' }}>
+            <div className="customizer-header">
+              <div>
+                <h3 style={{ margin: 0 }}>💳 Settle Cafe Khata Tab</h3>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  Clear or deduct outstanding cafe balance
+                </span>
+              </div>
+              <button 
+                onClick={() => setShowSettleModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="customizer-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ padding: '12px', background: 'var(--bg-tertiary, #f8fafc)', borderRadius: '8px' }}>
+                <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{selectedMember.name}</strong>
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                  Member ID: {selectedMember.id || selectedMember.person_id} • Phone: {selectedMember.phone || 'N/A'}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
+                  Amount to Settle (PKR):
+                </label>
+                <input
+                  type="number"
+                  value={settleAmount}
+                  onChange={(e) => setSettleAmount(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 14px',
+                    fontSize: '1.1rem',
+                    fontWeight: 800,
+                    borderRadius: '8px',
+                    border: '1.5px solid var(--border-color, #cbd5e1)',
+                    background: 'var(--bg-primary, #fff)',
+                    color: 'var(--text-primary)'
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '0.84rem', fontWeight: 700, marginBottom: '6px', color: 'var(--text-primary)' }}>
+                  Payment Method:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  {[
+                    { id: 'CASH', label: '💵 Cash' },
+                    { id: 'CARD', label: '💳 Card' },
+                    { id: 'QR_ONLINE', label: '📱 QR/Online' }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      style={{
+                        background: settleMethod === m.id ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-tertiary, #f1f5f9)',
+                        border: settleMethod === m.id ? '2px solid #10b981' : '1px solid var(--border-color, #e2e8f0)',
+                        color: settleMethod === m.id ? '#047857' : 'var(--text-primary)',
+                        padding: '8px',
+                        borderRadius: '8px',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        fontSize: '0.82rem'
+                      }}
+                      onClick={() => setSettleMethod(m.id)}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-color, #cbd5e1)',
+                    background: 'var(--bg-tertiary, #f8fafc)',
+                    color: 'var(--text-primary)',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setShowSettleModal(false)}
+                  disabled={isSettling}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    flex: 2,
+                    padding: '10px',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: '#10b981',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.92rem',
+                    cursor: 'pointer'
+                  }}
+                  onClick={handleSettleTab}
+                  disabled={isSettling || !settleAmount || settleAmount <= 0}
+                >
+                  {isSettling ? 'Processing...' : `✓ Settle Rs. ${settleAmount}`}
+                </button>
+              </div>
             </div>
           </div>
         </div>

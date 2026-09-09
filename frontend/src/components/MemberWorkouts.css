@@ -464,3 +464,24 @@
   text-align: center;
   color: var(--text-muted, #667085);
 }
+
+/* Branch Pill Styles */
+.mw-branch-badge-pill {
+  background: rgba(135, 95, 69, 0.08);
+  border: 1px solid rgba(135, 95, 69, 0.25);
+  color: var(--c-mocha, #875F45);
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mw-active-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(135, 95, 69, 0.1);
+}

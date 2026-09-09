@@ -98,6 +98,7 @@ class CreateOrderModel(BaseModel):
     order_status: str = "COMPLETED" # COMPLETED, PREPARING, CANCELLED
     notes: Optional[str] = ""
     served_by: str = "Front Desk Staff"  # RBAC ready: records cashier/receptionist
+    branch_id: Optional[str] = "branch_main"
 
 
 class UpdateOrderStatusModel(BaseModel):
@@ -227,9 +228,10 @@ async def get_orders(
     date_filter: Optional[str] = None,
     status: Optional[str] = None,
     person_id: Optional[str] = None,
+    branch_id: Optional[str] = None,
     limit: int = 100
 ):
-    """Get list of cafe orders with flexible filtering"""
+    """Get list of cafe orders with flexible filtering and branch support"""
     orders = load_json(ORDERS_FILE, default=[])
     filtered = []
     
@@ -249,6 +251,10 @@ async def get_orders(
             
         # Member filter
         if person_id and ord_item.get("person_id") != person_id:
+            continue
+        
+        # Branch filter
+        if branch_id and branch_id != "all" and (ord_item.get("branch_id") or "branch_main") != branch_id:
             continue
             
         filtered.append(ord_item)
@@ -289,15 +295,19 @@ async def create_order(payload: CreateOrderModel):
             if (m.get("person_id") or "").lower() == payload.person_id.lower():
                 current_tab = float(m.get("cafe_tab_balance", 0.0))
                 m["cafe_tab_balance"] = round(current_tab + payload.total_amount, 2)
+                m["updated_at"] = datetime.now().isoformat()
                 mem_found = True
+                break
         if mem_found:
             save_json(MEMBERSHIPS_FILE, memberships)
             
-    # 3. Create Order
-    today_num = datetime.now().strftime("%y%m%d")
-    unique_suffix = uuid.uuid4().hex[:4].upper()
-    order_id = f"ORD-{today_num}-{unique_suffix}"
+    # 3. Generate Order ID
+    today_prefix = datetime.now().strftime("ORD-%Y%m%d-")
+    today_orders = [o for o in orders if (o.get("id") or "").startswith(today_prefix)]
+    order_seq = len(today_orders) + 1
+    order_id = f"{today_prefix}{order_seq:04d}"
     
+    b_id = payload.branch_id or "branch_main"
     new_order = {
         "id": order_id,
         "person_id": payload.person_id,
@@ -310,6 +320,7 @@ async def create_order(payload: CreateOrderModel):
         "payment_method": payload.payment_method,
         "payment_status": payload.payment_status,
         "order_status": payload.order_status,
+        "branch_id": b_id,
         "notes": payload.notes or "",
         "served_by": payload.served_by,
         "created_at": datetime.now().isoformat()
@@ -702,7 +713,7 @@ async def get_member_active_preorders(person_id: str):
 # ============================================================
 
 @router.get("/analytics")
-async def get_cafe_analytics():
+async def get_cafe_analytics(branch_id: Optional[str] = None):
     """
     Returns daily and monthly cafe performance metrics,
     top selling items, and inventory low-stock alerts.
@@ -738,6 +749,10 @@ async def get_cafe_analytics():
     for ord_item in orders:
         if ord_item.get("order_status") in ["CANCELLED", "REJECTED"]:
             continue
+            
+        if branch_id and branch_id != "all":
+            if (ord_item.get("branch_id") or "branch_main") != branch_id:
+                continue
             
         ord_date = (ord_item.get("created_at") or "")[:10]
         amount = float(ord_item.get("total_amount", 0.0))

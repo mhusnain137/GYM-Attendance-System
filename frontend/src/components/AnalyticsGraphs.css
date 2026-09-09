@@ -321,3 +321,228 @@
 .rush-dot.light { background: #6EE7B7; }
 .rush-dot.moderate { background: #F59E0B; }
 .rush-dot.peak { background: #EF4444; }
+
+/* Multi-Branch Executive Matrix Styles */
+.branch-matrix-card-wrap {
+  padding: 22px 24px;
+  background: #FFFFFF;
+  border: 1px solid var(--c-sand);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+
+.branch-matrix-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--c-border-light, #f1f5f9);
+}
+
+.branch-matrix-header-bar h3 {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--c-slate);
+  margin: 0;
+}
+
+.branch-matrix-header-bar p {
+  font-size: 0.82rem;
+  color: var(--c-slate-light);
+  font-weight: 600;
+  margin: 3px 0 0 0;
+}
+
+.branch-matrix-kpis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.bm-kpi-chip {
+  padding: 6px 12px;
+  border-radius: var(--radius-md);
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.branch-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.branch-card-item {
+  border: 1.5px solid var(--c-border, #e2e8f0);
+  border-radius: var(--radius-md);
+  padding: 18px;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: all 0.2s ease-in-out;
+}
+
+.branch-card-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md, 0 4px 12px rgba(0, 0, 0, 0.06));
+  border-color: #cbd5e1;
+}
+
+.branch-card-item.active-focused {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.02);
+  box-shadow: 0 0 0 1px #10b981;
+}
+
+.bc-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.bc-top-row h4 {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--c-slate);
+  margin: 0;
+}
+
+.bc-city {
+  font-size: 0.78rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 2px;
+  display: block;
+}
+
+.bc-status-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.bc-status-badge.online {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.bc-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.bc-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.bc-stat-num {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--c-slate);
+}
+
+.bc-stat-num.green {
+  color: #10b981;
+}
+
+.bc-stat-label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.bc-occupancy-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.bc-occ-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.bc-occ-header strong {
+  color: var(--c-slate);
+}
+
+.bc-occ-bar {
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bc-occ-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #059669);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.bc-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.bc-share-tag {
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+
+.btn-bc-focus {
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  transition: all 0.15s ease;
+}
+
+.btn-bc-focus:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.btn-bc-focus.selected {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #10b981;
+}

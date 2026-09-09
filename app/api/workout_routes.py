@@ -247,6 +247,7 @@ class WorkoutSessionPayload(BaseModel):
     duration_minutes: Optional[int] = 45
     notes: Optional[str] = ""
     exercises: List[ExerciseLogItem] = []
+    branch_id: Optional[str] = None
 
 # -------------------------------------------------------------------------
 # API Endpoints
@@ -430,6 +431,17 @@ def log_workout_session(member_id: str, payload: WorkoutSessionPayload):
     session_id = f"wlog-{datetime.now().strftime('%y%m%d%H%M%S')}-{uuid.uuid4().hex[:4]}"
     session_date = payload.date or date.today().isoformat()
     
+    # Check person branch if payload branch_id not set
+    log_branch = payload.branch_id
+    if not log_branch:
+        persons = _load_json(os.path.join(DATA_DIR, "persons.json"), [])
+        for p in persons:
+            if (p.get("person_id") or p.get("id")) == norm_id:
+                log_branch = p.get("home_branch_id") or p.get("branch_id") or "branch_main"
+                break
+    if not log_branch:
+        log_branch = "branch_main"
+
     new_log = {
         "id": session_id,
         "member_id": norm_id,
@@ -439,6 +451,7 @@ def log_workout_session(member_id: str, payload: WorkoutSessionPayload):
         "timestamp": datetime.now().isoformat(),
         "duration_minutes": payload.duration_minutes or 45,
         "notes": payload.notes or "",
+        "branch_id": log_branch,
         "total_volume_kg": round(total_volume_kg, 1),
         "total_sets": total_completed_sets,
         "total_reps": total_reps,
@@ -456,15 +469,19 @@ def log_workout_session(member_id: str, payload: WorkoutSessionPayload):
     }
 
 @router.get("/admin/all-logs")
-def get_all_workout_logs_for_admin(member_id: Optional[str] = None, limit: int = 150):
+def get_all_workout_logs_for_admin(member_id: Optional[str] = None, branch_id: Optional[str] = None, limit: int = 150):
     """
-    Get workout logs for all members (or filtered by member) for Admin Workout Activity Inspector.
-    Enriches with member name from persons.json.
+    Get workout logs for all members (or filtered by member/branch) for Admin Workout Activity Inspector.
+    Enriches with member name and branch from persons.json.
     """
     logs_db = _load_json(LOGS_FILE, [])
     persons = _load_json(os.path.join(DATA_DIR, "persons.json"), [])
     person_map = {
         (p.get("person_id") or p.get("id")): p.get("name", "Member")
+        for p in persons
+    }
+    person_branch_map = {
+        (p.get("person_id") or p.get("id")): (p.get("home_branch_id") or p.get("branch_id") or "branch_main")
         for p in persons
     }
     
@@ -473,7 +490,11 @@ def get_all_workout_logs_for_admin(member_id: Optional[str] = None, limit: int =
         m_id = log.get("member_id", "")
         if member_id and _normalize_id(member_id) != _normalize_id(m_id):
             continue
+        log_branch = log.get("branch_id") or person_branch_map.get(m_id, "branch_main")
+        if branch_id and branch_id != "all" and log_branch != branch_id:
+            continue
         item = dict(log)
+        item["branch_id"] = log_branch
         item["member_name"] = person_map.get(m_id, log.get("member_name", "Member"))
         enriched_logs.append(item)
         

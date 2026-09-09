@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'recognition'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from db import mongo
 
-from fastapi import FastAPI, Response, UploadFile, File, Header, HTTPException
+from fastapi import FastAPI, Response, UploadFile, File, Header, HTTPException, Query
 from typing import Optional, List, Dict, Any
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, FileResponse
@@ -43,6 +43,8 @@ except Exception as e:
 from cafe_routes import router as cafe_router
 from auth_routes import router as auth_router
 from workout_routes import router as workout_router
+from branch_routes import router as branch_router
+from saas_routes import router as saas_router
 
 app = FastAPI(title="Person Identity System API")
 
@@ -56,6 +58,8 @@ async def on_startup():
 app.include_router(cafe_router)
 app.include_router(auth_router)
 app.include_router(workout_router)
+app.include_router(branch_router)
+app.include_router(saas_router)
 
 try:
     os.makedirs(recognition_config.FACE_CROPS_DIR, exist_ok=True)
@@ -149,8 +153,8 @@ async def get_status():
     }
 
 @app.get("/api/state")
-async def get_state():
-    """Get current recognition state with enriched membership alerts"""
+async def get_state(branch_id: Optional[str] = Query(None)):
+    """Get current recognition state with enriched membership alerts and branch roaming security"""
     global recognition_service
     if recognition_service and recognition_service.is_running():
         tracks = recognition_service.get_tracks()
@@ -223,10 +227,17 @@ async def get_state():
                 m_status = m.get("status", "ACTIVE")
                 plan_name = m.get("plan_name", "Standard Pass")
                 phone = m.get("phone", "")
+                m_branch_id = m.get("branch_id", "BR-MAIN-001")
+                m_branch_name = m.get("branch_name", "Main Branch")
+                allowed_branches = m.get("allowed_branches") or (["all"] if m.get("is_roaming") else [m_branch_id])
+                is_roaming = m.get("is_roaming", False) or ("all" in allowed_branches)
                 
                 person_data["expiry_date"] = exp_date
                 person_data["plan_name"] = plan_name
                 person_data["phone"] = phone
+                person_data["branch_id"] = m_branch_id
+                person_data["branch_name"] = m_branch_name
+                person_data["is_roaming"] = is_roaming
                 
                 days_left = 0
                 if exp_date:
@@ -238,7 +249,22 @@ async def get_state():
                         days_left = 0
                 person_data["days_left"] = days_left
                 
-                if m_status == "FROZEN":
+                # Multi-Branch Turnstile Security Check:
+                effective_branch = branch_id or getattr(recognition_service, "active_branch_id", None)
+                roaming_denied = False
+                if effective_branch and effective_branch.lower() not in ["all", ""] and not is_roaming:
+                    if m_branch_id != effective_branch and effective_branch not in allowed_branches:
+                        roaming_denied = True
+                
+                if roaming_denied:
+                    person_data["membership_status"] = "ROAMING_DENIED"
+                    person_data["is_alert"] = True
+                    person_data["alert_type"] = "ROAMING_DENIED"
+                    person_data["alert_message"] = f"Pass locked to {m_branch_name}. Cross-Branch Roaming Pass required!"
+                    person_data["door_open"] = False
+                    person_data["access_status"] = "DENIED"
+                    person_data["door_reason"] = f"Door Locked: Access valid only at {m_branch_name} (No Roaming Pass)"
+                elif m_status == "FROZEN":
                     if is_confirmed and recognition_service:
                         recognition_service.auto_unfreeze_membership_if_needed(pid, pname)
                         # Re-read membership info after auto-unfreeze
@@ -416,12 +442,36 @@ async def get_state():
     }
 
 @app.get("/api/people")
-async def get_people():
-    """Get all registered people"""
+async def get_people(branch_id: Optional[str] = None):
+    """Get all registered people, with multi-branch enrichment and filtering"""
     global recognition_service
+    people = []
     if recognition_service:
-        return recognition_service.get_registered_people()
-    return []
+        people = recognition_service.get_registered_people() or []
+    elif mongo.is_connected():
+        people = mongo.find_all("persons")
+    else:
+        persons_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "persons.json")
+        people = load_json_file(persons_file)
+
+    enriched = []
+    for p in people:
+        p_copy = dict(p) if isinstance(p, dict) else p
+        # Default fallback for backward compatibility
+        p_home = p_copy.get("home_branch_id") or p_copy.get("branch_id") or "branch_main"
+        p_copy["home_branch_id"] = p_home
+        p_copy["branch_id"] = p_home
+        if "allowed_branches" not in p_copy or not p_copy["allowed_branches"]:
+            p_copy["allowed_branches"] = ["all"]
+
+        # Filter if requested
+        if branch_id and branch_id != "all":
+            allowed = p_copy.get("allowed_branches", ["all"])
+            if p_home != branch_id and "all" not in allowed and branch_id not in allowed:
+                continue
+        enriched.append(p_copy)
+
+    return enriched
 
 from datetime import datetime, timedelta
 
@@ -461,14 +511,22 @@ async def unregister_person(person_id: str):
 
 @app.put("/api/people/{person_id}")
 async def update_person_name(person_id: str, data: dict):
-    """Update person's name, link memberships and Auto-Unfreeze if previously frozen"""
+    """Update person's name, phone, branch transfer, link memberships and Auto-Unfreeze if previously frozen"""
     global recognition_service
     if recognition_service:
         new_name = data.get("name", "").strip()
         new_phone = data.get("phone", "").strip() if "phone" in data else None
-        if not new_name and new_phone is None:
-            return {"success": False, "message": "Name or phone cannot be empty"}
+        new_branch_id = data.get("branch_id") or data.get("home_branch_id")
+        if not new_name and new_phone is None and not new_branch_id:
+            return {"success": False, "message": "No fields to update"}
         
+        new_branch_name = None
+        if new_branch_id:
+            branches_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "branches.json")
+            all_b = load_json_file(branches_file, default=[])
+            matched_b = next((b for b in all_b if b.get("branch_id") == new_branch_id), None)
+            new_branch_name = matched_b.get("name") if matched_b else new_branch_id
+
         persons = recognition_service.load_database()
         updated = False
         old_name = ""
@@ -479,6 +537,11 @@ async def update_person_name(person_id: str, data: dict):
                     p["name"] = new_name
                 if new_phone is not None:
                     p["phone"] = new_phone
+                if new_branch_id:
+                    p["branch_id"] = new_branch_id
+                    p["home_branch_id"] = new_branch_id
+                    if new_branch_name:
+                        p["branch_name"] = new_branch_name
                 updated = True
                 break
         
@@ -528,6 +591,12 @@ async def update_person_name(person_id: str, data: dict):
                                     m["person_name"] = new_name
                                 if new_phone:
                                     m["phone"] = new_phone
+                                if new_branch_id:
+                                    m["branch_id"] = new_branch_id
+                                    if new_branch_name:
+                                        m["branch_name"] = new_branch_name
+                                    if not m.get("is_roaming"):
+                                        m["allowed_branches"] = [new_branch_id]
                                 m_changed = True
                                 
                                 # If frozen due to unregistration, unfreeze and extend expiry date!
@@ -552,6 +621,8 @@ async def update_person_name(person_id: str, data: dict):
                             with open(temp_f, "w", encoding="utf-8") as f:
                                 json.dump(memberships, f, indent=4)
                             os.replace(temp_f, memberships_file)
+                            if mongo.is_connected():
+                                mongo.replace_all("memberships", memberships)
                 except Exception as e:
                     print("Error auto-unfreezing membership:", e)
             
@@ -797,16 +868,32 @@ def resolve_person_names(records):
     return records
 
 @app.get("/api/attendance")
-async def get_attendance():
-    """Get all attendance records"""
+async def get_attendance(branch_id: Optional[str] = None):
+    """Get all attendance records, optionally filtered by branch"""
     global recognition_service
+    records = []
     if recognition_service:
-        return resolve_person_names(recognition_service.load_attendance())
-    return []
+        records = resolve_person_names(recognition_service.load_attendance())
+    elif mongo.is_connected():
+        records = resolve_person_names(mongo.find_all("attendance"))
+    else:
+        att_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "attendance.json")
+        records = resolve_person_names(load_json_file(att_file))
+
+    for r in records:
+        if "branch_id" not in r:
+            r["branch_id"] = "branch_main"
+        if "branch_name" not in r:
+            r["branch_name"] = "Gulberg Main"
+
+    if branch_id and branch_id != "all":
+        records = [r for r in records if r.get("branch_id") == branch_id]
+
+    return records
 
 @app.get("/api/attendance/today")
-async def get_today_attendance():
-    """Get today's attendance records with trial countdown data"""
+async def get_today_attendance(branch_id: Optional[str] = None):
+    """Get today's attendance records with trial countdown data and branch filtering"""
     global recognition_service
     if recognition_service:
         from datetime import datetime
@@ -833,50 +920,82 @@ async def get_today_attendance():
                     visit_dates_by_pid[r_pid].add(r_date)
 
             for r in records:
+                if "branch_id" not in r:
+                    r["branch_id"] = "branch_main"
+                if "branch_name" not in r:
+                    r["branch_name"] = "Gulberg Main"
+
                 r_pid = (r.get("person_id") or "").lower().strip()
                 mem = memberships_by_pid.get(r_pid)
                 if mem and mem.get("status") == "ACTIVE":
                     r["membership_status"] = "ACTIVE"
                     r["is_trial"] = False
-                    r["plan_name"] = mem.get("plan_name", "Standard Pass")
+                    r["trial_days_used"] = 0
+                    r["trial_days_remaining"] = 0
+                    r["trial_expired"] = False
                 else:
-                    distinct_count = len(visit_dates_by_pid.get(r_pid, set()))
-                    days_used = max(1, distinct_count)
+                    days_used = len(visit_dates_by_pid.get(r_pid, set()))
+                    r["is_trial"] = True
                     r["trial_days_used"] = days_used
-                    r["trial_days_left"] = max(0, 5 - days_used)
-                    r["is_trial"] = (days_used <= 5)
-                    r["is_trial_expired"] = (days_used > 5)
+                    r["trial_days_remaining"] = max(0, 5 - days_used)
+                    r["trial_expired"] = (days_used > 5)
                     r["membership_status"] = "TRIAL" if (days_used <= 5) else "TRIAL_EXPIRED"
         except Exception as e:
             print("Error enriching attendance with trial info:", e)
+
+        if branch_id and branch_id != "all":
+            records = [r for r in records if r.get("branch_id") == branch_id]
 
         return records
     return []
 
 @app.get("/api/visits")
-async def get_visits():
-    """Get all visit logs"""
+async def get_visits(branch_id: Optional[str] = None):
+    """Get all visit logs with branch filtering"""
     global recognition_service
+    records = []
     if recognition_service and hasattr(recognition_service, 'load_visits'):
-        return resolve_person_names(recognition_service.load_visits())
-    return []
+        records = resolve_person_names(recognition_service.load_visits())
+    elif mongo.is_connected():
+        records = resolve_person_names(mongo.find_all("visits"))
+
+    for r in records:
+        if "branch_id" not in r:
+            r["branch_id"] = "branch_main"
+
+    if branch_id and branch_id != "all":
+        records = [r for r in records if r.get("branch_id") == branch_id]
+
+    return records
 
 @app.get("/api/visits/today")
-async def get_today_visits():
-    """Get today's visit logs"""
+async def get_today_visits(branch_id: Optional[str] = None):
+    """Get today's visit logs with branch filtering"""
     global recognition_service
+    records = []
+    from datetime import datetime
+    today = datetime.now().strftime("%Y-%m-%d")
+
     if recognition_service and hasattr(recognition_service, 'load_visits'):
-        from datetime import datetime
-        today = datetime.now().strftime("%Y-%m-%d")
         visits = recognition_service.load_visits()
         today_visits = [record for record in visits if record.get("date") == today]
-        return resolve_person_names(today_visits)
-    return []
+        records = resolve_person_names(today_visits)
+    elif mongo.is_connected():
+        docs = mongo.find_all("visits", {"date": today})
+        records = resolve_person_names(docs)
+
+    for r in records:
+        if "branch_id" not in r:
+            r["branch_id"] = "branch_main"
+
+    if branch_id and branch_id != "all":
+        records = [r for r in records if r.get("branch_id") == branch_id]
+
+    return records
 
 @app.get("/api/events")
 async def get_events():
     """Get recent events"""
-    return list(event_log)
 
 @app.delete("/api/events")
 async def clear_events():
@@ -1053,6 +1172,7 @@ FILE_BASENAME_TO_COLL = {
     "cafe_orders.json": "cafe_orders",
     "cafe_products.json": "cafe_products",
     "users.json": "users",
+    "branches.json": "branches",
 }
 
 def load_json_file(filepath, default=[]):
@@ -1125,14 +1245,15 @@ async def record_reminder_sent(membership_id: str):
     return {"status": "error", "message": "Membership not found"}
 
 @app.get("/api/memberships")
-async def get_memberships():
-    """Get all memberships with person details"""
+async def get_memberships(branch_id: Optional[str] = None):
+    """Get all memberships with person details and branch filtering"""
     memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
     memberships = load_json_file(memberships_file)
     
     people = recognition_service.get_registered_people() if recognition_service else []
     people_map = {p.get("id"): p.get("name") for p in people}
     people_phone_map = {p.get("id"): p.get("phone", "") for p in people}
+    people_branch_map = {p.get("id"): (p.get("home_branch_id") or p.get("branch_id") or "branch_main") for p in people}
     
     for m in memberships:
         pid = m.get("person_id")
@@ -1140,17 +1261,26 @@ async def get_memberships():
             m["person_name"] = people_map[pid]
         if not m.get("phone") and pid in people_phone_map and people_phone_map[pid]:
             m["phone"] = people_phone_map[pid]
+        if not m.get("branch_id"):
+            m["branch_id"] = people_branch_map.get(pid, "branch_main")
+            
+    if branch_id and branch_id != "all":
+        memberships = [m for m in memberships if (m.get("branch_id") or "branch_main") == branch_id]
             
     return memberships
 
 @app.get("/api/memberships/summary")
-async def get_memberships_summary():
-    """Get membership statistics summary"""
+async def get_memberships_summary(branch_id: Optional[str] = None):
+    """Get membership statistics summary with branch filtering"""
     memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
     payments_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "payments.json")
     
     memberships = load_json_file(memberships_file)
     payments = load_json_file(payments_file)
+
+    if branch_id and branch_id != "all":
+        memberships = [m for m in memberships if (m.get("branch_id") or "branch_main") == branch_id]
+        payments = [p for p in payments if (p.get("branch_id") or "branch_main") == branch_id]
     
     from datetime import datetime, timedelta
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -1188,7 +1318,7 @@ async def get_memberships_summary():
 
 @app.post("/api/memberships")
 async def create_membership(data: dict):
-    """Create a new membership"""
+    """Create a new membership with branch tagging"""
     memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
     payments_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "payments.json")
     plans_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "membership_plans.json")
@@ -1236,6 +1366,7 @@ async def create_membership(data: dict):
         
     now_iso = datetime.now().isoformat()
     amount = float(data.get("amount", plan_obj.get("price", 0) if plan_obj else 0))
+    b_id = data.get("branch_id") or "branch_main"
     
     new_membership = {
         "membership_id": new_id,
@@ -1247,6 +1378,8 @@ async def create_membership(data: dict):
         "status": "ACTIVE",
         "payment_status": data.get("payment_status", "PAID"),
         "amount": amount,
+        "branch_id": b_id,
+        "allowed_branches": data.get("allowed_branches") or (["all"] if data.get("is_roaming") else [b_id]),
         "phone": data.get("phone", "").strip(),
         "notes": data.get("notes", ""),
         "created_at": now_iso,
@@ -1262,6 +1395,7 @@ async def create_membership(data: dict):
             "payment_id": pay_id,
             "membership_id": new_id,
             "amount": amount,
+            "branch_id": b_id,
             "payment_status": "PAID",
             "payment_date": start_date,
             "payment_method": data.get("payment_method", "CASH"),
@@ -1272,7 +1406,7 @@ async def create_membership(data: dict):
         payments.append(new_payment)
         save_json_file(payments_file, payments)
         
-    add_event("MEMBERSHIP", f"Created membership {new_id} for person {data.get('person_id')}")
+    add_event("MEMBERSHIP", f"Created membership {new_id} for person {data.get('person_id')} at {b_id}")
     return {"status": "success", "message": "Membership created successfully", "data": new_membership}
 
 @app.put("/api/memberships/{membership_id}")
@@ -1471,8 +1605,8 @@ async def get_membership_history(membership_id: str):
     return history
 
 @app.get("/api/analytics/dashboard")
-async def get_dashboard_analytics():
-    """Get monthly revenue trends, hourly rush distributions, and key KPIs"""
+async def get_dashboard_analytics(branch_id: Optional[str] = None):
+    """Get monthly revenue trends, hourly rush distributions, key KPIs, and multi-branch comparison"""
     payments_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "payments.json")
     memberships_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "memberships.json")
     attendance_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "attendance.json")
@@ -1482,6 +1616,50 @@ async def get_dashboard_analytics():
     memberships = load_json_file(memberships_file)
     attendance = load_json_file(attendance_file)
     visits = load_json_file(visits_file)
+
+    # Multi-Branch Overview calculation (always computed across all branches)
+    from branch_routes import load_branches
+    all_branches = load_branches()
+    cafe_orders_file = os.path.join(recognition_config.PROJECT_ROOT, "data", "cafe_orders.json")
+    cafe_orders = load_json_file(cafe_orders_file, default=[])
+
+    branches_overview = []
+    for b in all_branches:
+        bid = b.get("branch_id")
+        is_main = bid in ["BR-MAIN-001", "branch_main"] or b.get("is_main", False)
+        
+        def matches_b(item_branch):
+            if not item_branch or item_branch in ["BR-MAIN-001", "branch_main", "None"]:
+                return is_main
+            return item_branch == bid
+
+        b_members = sum(1 for m in memberships if matches_b(m.get("branch_id")))
+        b_visits = sum(1 for v in visits if matches_b(v.get("branch_id")))
+        b_mem_rev = sum(float(p.get("amount", 0)) for p in payments if matches_b(p.get("branch_id")) and p.get("payment_status") == "PAID")
+        if b_mem_rev == 0:
+            b_mem_rev = sum(float(m.get("amount", 0)) for m in memberships if matches_b(m.get("branch_id")))
+
+        b_cafe_rev = sum(float(o.get("total_amount", 0)) for o in cafe_orders if matches_b(o.get("branch_id")) and o.get("order_status") not in ["CANCELLED", "REJECTED"])
+
+        branches_overview.append({
+            "branch_id": bid,
+            "name": b.get("name") or b.get("branch_name") or "Titan Gym Branch",
+            "city": b.get("city") or "Lahore",
+            "members": b_members,
+            "today_visits": b_visits,
+            "revenue": round(b_mem_rev + b_cafe_rev, 2),
+            "membership_revenue": round(b_mem_rev, 2),
+            "cafe_revenue": round(b_cafe_rev, 2),
+            "capacity": b.get("capacity", 200),
+            "is_active": b.get("is_active", True)
+        })
+
+    # Filter data if specific branch selected
+    if branch_id and branch_id != "all":
+        payments = [p for p in payments if (p.get("branch_id") or "branch_main") == branch_id]
+        memberships = [m for m in memberships if (m.get("branch_id") or "branch_main") == branch_id]
+        attendance = [a for a in attendance if (a.get("branch_id") or "branch_main") == branch_id]
+        visits = [v for v in visits if (v.get("branch_id") or "branch_main") == branch_id]
     
     from datetime import datetime, timedelta
     now = datetime.now()
@@ -1553,21 +1731,28 @@ async def get_dashboard_analytics():
                     hourly_counts[hour] += 1
             except Exception:
                 pass
-
-    max_rush_hour = max(hourly_counts, key=hourly_counts.get) if any(hourly_counts.values()) else 18
-    max_count = hourly_counts.get(max_rush_hour, 0)
-    
+                
+    max_rush = max(hourly_counts.values()) if hourly_counts else 1
+    if max_rush == 0:
+        max_rush = 1
+        
     hourly_rush = []
+    max_rush_hour = 18
+    max_rush_val = -1
+    
     for h in range(6, 23):
-        cnt = hourly_counts[h]
-        if cnt >= max_count * 0.75 and cnt > 0:
+        cnt = hourly_counts.get(h, 0)
+        if cnt > max_rush_val:
+            max_rush_val = cnt
+            max_rush_hour = h
+            
+        ratio = cnt / max_rush
+        if ratio >= 0.75:
             intensity = "peak"
-        elif cnt >= max_count * 0.4 and cnt > 0:
-            intensity = "moderate"
-        elif cnt > 0:
-            intensity = "light"
+        elif ratio >= 0.40:
+            intensity = "medium"
         else:
-            intensity = "quiet"
+            intensity = "low"
             
         period = "AM" if h < 12 else "PM"
         display_h = h if h <= 12 else h - 12
@@ -1605,6 +1790,7 @@ async def get_dashboard_analytics():
     return {
         "monthly_revenue": monthly_revenue,
         "hourly_rush": hourly_rush,
+        "branches_overview": branches_overview,
         "kpis": {
             "this_month_revenue": this_month_rev,
             "prev_month_revenue": prev_month_rev,

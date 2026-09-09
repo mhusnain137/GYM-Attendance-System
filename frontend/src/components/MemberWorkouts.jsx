@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useBranch } from '../context/BranchContext';
 import './MemberWorkouts.css';
 
 export default function MemberWorkouts() {
+  const { selectedBranchId, branches } = useBranch();
   const [logs, setLogs] = useState([]);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,12 +19,19 @@ export default function MemberWorkouts() {
     }));
   };
 
+  const getBranchName = (branchId) => {
+    if (!branchId || branchId === 'all') return 'All Branches';
+    const b = branches.find(item => item.branch_id === branchId || item.id === branchId);
+    return b ? (b.name || b.branch_name) : 'Titan Gym (Main)';
+  };
+
   const fetchLogs = async () => {
     setLoading(true);
     try {
+      const q = selectedBranchId && selectedBranchId !== 'all' ? `?branch_id=${encodeURIComponent(selectedBranchId)}` : '';
       const [logsRes, peopleRes] = await Promise.all([
-        fetch('/api/workout/admin/all-logs'),
-        fetch('/api/people')
+        fetch(`/api/workout/admin/all-logs${q}`),
+        fetch(`/api/people${q}`)
       ]);
       const logsData = await logsRes.json();
       const peopleData = await peopleRes.json();
@@ -41,12 +50,23 @@ export default function MemberWorkouts() {
   };
 
   useEffect(() => {
+    setSelectedMember('ALL');
     fetchLogs();
-  }, []);
+  }, [selectedBranchId]);
+
+  const activeBranchPeople = useMemo(() => {
+    if (!selectedBranchId || selectedBranchId === 'all') return people;
+    return people.filter(p => (p.home_branch_id || p.branch_id || 'BR-MAIN-001') === selectedBranchId);
+  }, [people, selectedBranchId]);
 
   // Filtered logs
   const filteredLogs = useMemo(() => {
     return logs.filter(log => {
+      // Branch filter
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        const logBranch = log.branch_id || 'BR-MAIN-001';
+        if (logBranch !== selectedBranchId) return false;
+      }
       // Member filter
       if (selectedMember !== 'ALL' && log.member_id !== selectedMember) {
         return false;
@@ -81,13 +101,13 @@ export default function MemberWorkouts() {
 
   // Overall statistics
   const stats = useMemo(() => {
-    const totalSessions = logs.length;
-    const uniqueMembers = new Set(logs.map(l => l.member_id)).size;
-    const totalVolume = logs.reduce((acc, l) => acc + (l.total_volume_kg || 0), 0);
+    const totalSessions = filteredLogs.length;
+    const uniqueMembers = new Set(filteredLogs.map(l => l.member_id)).size;
+    const totalVolume = filteredLogs.reduce((acc, l) => acc + (l.total_volume_kg || 0), 0);
     
     // Top routine
     const routineCounts = {};
-    logs.forEach(l => {
+    filteredLogs.forEach(l => {
       const name = l.template_name || 'Workout';
       routineCounts[name] = (routineCounts[name] || 0) + 1;
     });
@@ -106,7 +126,7 @@ export default function MemberWorkouts() {
       totalVolume: Math.round(totalVolume),
       topRoutine
     };
-  }, [logs]);
+  }, [filteredLogs]);
 
   return (
     <div className="member-workouts-container">
@@ -118,6 +138,11 @@ export default function MemberWorkouts() {
           </h2>
           <p className="mw-subtitle">
             Track which member performed which exercises, sets, weights, reps, and overall lifting volume.
+            {selectedBranchId && selectedBranchId !== 'all' && (
+              <span className="mw-active-branch-pill" style={{ marginLeft: '10px', background: 'rgba(135,95,69,0.12)', color: 'var(--c-mocha, #875F45)', padding: '2px 9px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' }}>
+                🏢 Branch: {getBranchName(selectedBranchId)}
+              </span>
+            )}
           </p>
         </div>
         <button className="mw-refresh-btn" onClick={fetchLogs} disabled={loading}>
@@ -169,12 +194,12 @@ export default function MemberWorkouts() {
             onChange={(e) => setSelectedMember(e.target.value)}
             className="mw-select"
           >
-            <option value="ALL">🌟 All Gym Members ({people.length})</option>
-            {people.map(p => {
+            <option value="ALL">🌟 All Gym Members ({activeBranchPeople.length})</option>
+            {activeBranchPeople.map(p => {
               const id = p.person_id || p.id;
               return (
                 <option key={id} value={id}>
-                  {p.name} ({id})
+                  {p.name} ({id}) {selectedBranchId === 'all' ? `• ${getBranchName(p.home_branch_id || p.branch_id)}` : ''}
                 </option>
               );
             })}
@@ -221,7 +246,7 @@ export default function MemberWorkouts() {
             <p style={{ margin: 0, color: 'var(--text-muted, #667085)', fontSize: '0.9rem' }}>
               {selectedMember !== 'ALL' || searchExercise
                 ? 'No workouts matched your selected member or exercise filter.'
-                : 'No member has logged a workout session yet. When members complete workouts, their exercises will show up here.'}
+                : 'No member has logged a workout session yet for this branch.'}
             </p>
           </div>
         ) : (
@@ -243,6 +268,9 @@ export default function MemberWorkouts() {
                         <div className="mw-member-name-row">
                           <h4 className="mw-member-name">{log.member_name}</h4>
                           <span className="mw-member-id-badge">{log.member_id}</span>
+                          <span className="mw-branch-badge-pill" title={`Branch: ${getBranchName(log.branch_id)}`}>
+                            🏢 {getBranchName(log.branch_id)}
+                          </span>
                         </div>
                         <div className="mw-session-meta">
                           <span className="mw-routine-tag">⚡ {log.template_name}</span>

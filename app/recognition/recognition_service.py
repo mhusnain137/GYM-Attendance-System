@@ -214,6 +214,14 @@ class RecognitionService:
                         # Attendance already exists, return it
                         return record
                 
+                # Determine branch attribution
+                branch_id = getattr(self, "active_branch_id", "BR-MAIN-001")
+                branch_name = getattr(self, "active_branch_name", "Titan Gym (Main Branch)")
+                for p in (self.persons or []):
+                    if p.get("id") == person_id:
+                        branch_id = p.get("home_branch_id") or p.get("branch_id") or branch_id
+                        break
+
                 # Create new attendance record
                 new_record = {
                     "date": today,
@@ -222,7 +230,9 @@ class RecognitionService:
                     "status": "Present",
                     "first_detected": current_time,
                     "camera_source": self.camera_source,
-                    "camera_name": self.camera_name or ('Webcam' if self.camera_source == 'webcam' else 'CCTV')
+                    "camera_name": self.camera_name or ('Webcam' if self.camera_source == 'webcam' else 'CCTV'),
+                    "branch_id": branch_id,
+                    "branch_name": branch_name
                 }
                 
                 # Add to attendance list
@@ -1074,7 +1084,7 @@ class RecognitionService:
                 cv2.putText(frame, f"Face: {confidence:.2f}", (x, y + h + 20),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1)
         
-        # Draw FPS
+        # Draw High-Contrast FPS Badge on Frame
         self.fps_counter += 1
         elapsed = time.perf_counter() - self.fps_start
         if elapsed >= 1.0:
@@ -1082,8 +1092,11 @@ class RecognitionService:
             self.fps_counter = 0
             self.fps_start = time.perf_counter()
         
-        cv2.putText(frame, f"FPS: {self.fps:.1f}", (15, 30),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+        fps_text = f"FPS: {self.fps:.1f}"
+        cv2.rectangle(frame, (12, 10), (135, 42), (15, 23, 42), -1)
+        cv2.rectangle(frame, (12, 10), (135, 42), (0, 255, 255), 1)
+        cv2.putText(frame, fps_text, (20, 33),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 255, 255), 2)
         
         # Draw registration info
         if self.registration_mode:
@@ -1094,17 +1107,21 @@ class RecognitionService:
         
         return frame
     
-    def set_camera_source(self, source_type, rtsp_url='', camera_name=''):
+    def set_camera_source(self, source_type, rtsp_url='', camera_name='', branch_id='BR-MAIN-001', branch_name='Titan Gym (Main Branch)'):
         """Set camera source type
         
         Args:
             source_type: 'webcam' or 'rtsp'
             rtsp_url: RTSP stream URL (required for rtsp)
             camera_name: Optional camera name for display
+            branch_id: Branch identifier
+            branch_name: Branch name
         """
         self.camera_source = source_type
         self.rtsp_url = rtsp_url
         self.camera_name = camera_name if camera_name else ('Webcam' if source_type == 'webcam' else 'CCTV')
+        self.active_branch_id = branch_id
+        self.active_branch_name = branch_name
     
     def get_camera_status(self):
         """Get current camera status"""
@@ -1121,7 +1138,14 @@ class RecognitionService:
             self.camera_status = 'connecting'
             
             if self.camera_source == 'webcam':
-                self.cap = cv2.VideoCapture(recognition_config.CAMERA_ID)
+                # Try DirectShow first on Windows for robust capture and to avoid MSMF locking issues
+                if sys.platform == "win32":
+                    try:
+                        self.cap = cv2.VideoCapture(recognition_config.CAMERA_ID, cv2.CAP_DSHOW)
+                    except Exception:
+                        self.cap = None
+                if self.cap is None or not self.cap.isOpened():
+                    self.cap = cv2.VideoCapture(recognition_config.CAMERA_ID)
                 if not self.cap.isOpened():
                     print("Could not open webcam.")
                     self.camera_status = 'error'

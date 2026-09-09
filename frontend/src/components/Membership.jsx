@@ -4,6 +4,7 @@ import { calculateMembershipInfo, formatCurrency } from '../utils/membershipUtil
 import { formatWhatsAppNumber, generateWhatsAppReminderText, openWhatsApp, formatTemplateMessage, getExpiringMemberships } from '../utils/whatsappUtils';
 import MemberProfileModal from './MemberProfileModal';
 import { useAuth } from '../context/AuthContext';
+import { useBranch } from '../context/BranchContext';
 import './Membership.css';
 
 // Dedicated avatar component that handles face crops with graceful fallback
@@ -42,6 +43,7 @@ const DEFAULT_MEMBERSHIP_PLANS = [
 
 function Membership() {
   const { canDelete, canFreezePass, isReceptionist } = useAuth();
+  const { selectedBranchId, branches } = useBranch();
   const [memberships, setMemberships] = useState([]);
   const [plans, setPlans] = useState(DEFAULT_MEMBERSHIP_PLANS);
   const [people, setPeople] = useState([]);
@@ -88,6 +90,8 @@ function Membership() {
 
   const [formData, setFormData] = useState({
     person_id: '',
+    branch_id: selectedBranchId !== 'all' ? selectedBranchId : 'BR-MAIN-001',
+    is_roaming: false,
     plan_id: 'monthly',
     start_date: new Date().toISOString().split('T')[0],
     expiry_date: '',
@@ -102,15 +106,19 @@ function Membership() {
 
   useEffect(() => {
     fetchAllData();
-  }, []);
+  }, [selectedBranchId]);
 
   const fetchAllData = async () => {
     try {
+      const params = {};
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        params.branch_id = selectedBranchId;
+      }
       const [memRes, plansRes, peopleRes, sumRes] = await Promise.all([
-        axios.get('/api/memberships'),
+        axios.get('/api/memberships', { params }),
         axios.get('/api/membership-plans'),
-        axios.get('/api/people'),
-        axios.get('/api/memberships/summary')
+        axios.get('/api/people', { params }),
+        axios.get('/api/memberships/summary', { params })
       ]);
 
       setMemberships(memRes.data || []);
@@ -120,6 +128,12 @@ function Membership() {
     } catch (error) {
       console.error('Error fetching membership data:', error);
     }
+  };
+
+  const getBranchName = (branchId) => {
+    if (!branchId || branchId === 'all') return 'All Branches';
+    const b = branches.find(item => item.branch_id === branchId || item.id === branchId);
+    return b ? (b.name || b.branch_name) : 'Titan Gym (Main)';
   };
 
   const calculateExpiryDate = (startDate, planId) => {
@@ -182,8 +196,14 @@ function Membership() {
 
     try {
       const expiry = formData.expiry_date || calculateExpiryDate(formData.start_date, formData.plan_id);
+      const defaultBranch = selectedBranchId !== 'all' ? selectedBranchId : 'BR-MAIN-001';
+      const branchToSave = formData.branch_id || defaultBranch;
+      const allowed = formData.is_roaming ? ['all'] : [branchToSave];
+      
       const payload = { 
         ...formData, 
+        branch_id: branchToSave,
+        allowed_branches: allowed,
         amount: parseFloat(formData.amount) || 0,
         expiry_date: expiry 
       };
@@ -207,8 +227,13 @@ function Membership() {
     if (!selectedMembership) return;
 
     try {
+      const branchToSave = formData.branch_id || selectedMembership.branch_id || 'BR-MAIN-001';
+      const allowed = formData.is_roaming ? ['all'] : [branchToSave];
+
       const payload = {
         ...formData,
+        branch_id: branchToSave,
+        allowed_branches: allowed,
         amount: parseFloat(formData.amount) || 0
       };
       const res = await axios.put(`/api/memberships/${selectedMembership.membership_id}`, payload);
@@ -308,8 +333,11 @@ function Membership() {
 
   const resetForm = () => {
     const today = new Date().toISOString().split('T')[0];
+    const defaultBranch = selectedBranchId !== 'all' ? selectedBranchId : 'BR-MAIN-001';
     setFormData({
       person_id: '',
+      branch_id: defaultBranch,
+      is_roaming: false,
       plan_id: 'monthly',
       start_date: today,
       expiry_date: calculateExpiryDate(today, 'monthly'),
@@ -331,33 +359,39 @@ function Membership() {
     const planPrice = firstPlan.price || 5000;
     const today = new Date().toISOString().split('T')[0];
     const expiry = calculateExpiryDate(today, planId);
+    const defaultBranch = selectedBranchId !== 'all' ? selectedBranchId : 'BR-MAIN-001';
 
-    if (people.length > 0) {
-      const firstPerson = people[0].id || people[0].person_id;
-      setFormData(prev => ({
-        ...prev,
-        person_id: firstPerson,
-        plan_id: planId,
-        amount: planPrice,
-        start_date: today,
-        expiry_date: expiry
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        plan_id: planId,
-        amount: planPrice,
-        start_date: today,
-        expiry_date: expiry
-      }));
-    }
+    // Prioritize members belonging to selected branch
+    const branchPeople = people.filter(p => selectedBranchId === 'all' || (p.home_branch_id || p.branch_id || 'BR-MAIN-001') === selectedBranchId);
+    const activePeople = branchPeople.length > 0 ? branchPeople : people;
+    const firstPersonId = activePeople.length > 0 ? (activePeople[0].id || activePeople[0].person_id) : '';
+    const firstPersonObj = people.find(p => (p.id || p.person_id) === firstPersonId);
+
+    setFormData({
+      person_id: firstPersonId,
+      branch_id: firstPersonObj?.home_branch_id || firstPersonObj?.branch_id || defaultBranch,
+      is_roaming: false,
+      plan_id: planId,
+      amount: planPrice,
+      start_date: today,
+      expiry_date: expiry,
+      payment_status: 'PAID',
+      payment_method: 'CASH',
+      reference_id: '',
+      phone: firstPersonObj?.phone || '',
+      notes: '',
+      freeze_reason: ''
+    });
     setShowAddModal(true);
   };
 
   const openEditModal = (m) => {
     setSelectedMembership(m);
+    const isRoaming = m.allowed_branches && (m.allowed_branches.includes('all') || m.allowed_branches.length > 1);
     setFormData({
       person_id: m.person_id || '',
+      branch_id: m.branch_id || 'BR-MAIN-001',
+      is_roaming: !!isRoaming,
       plan_id: m.plan_id || 'monthly',
       start_date: m.start_date || new Date().toISOString().split('T')[0],
       expiry_date: m.expiry_date || '',
@@ -428,12 +462,17 @@ function Membership() {
   // Enrich memberships with calculated info
   const enrichedMemberships = memberships.map(m => {
     const info = calculateMembershipInfo(m);
-    const personObj = people.find(p => p.id === m.person_id || p.person_id === m.person_id);
+    const personObj = people.find(p => (p.id || p.person_id) === m.person_id);
     const personName = m.person_name || personObj?.name || m.person_id || 'Member';
+    const memberBranchId = m.branch_id || personObj?.home_branch_id || personObj?.branch_id || 'BR-MAIN-001';
+    const isRoaming = m.allowed_branches && (m.allowed_branches.includes('all') || m.allowed_branches.length > 1);
 
     return {
       ...m,
       person_name: personName,
+      branch_id: memberBranchId,
+      branch_name: getBranchName(memberBranchId),
+      is_roaming: isRoaming,
       info
     };
   });
@@ -560,11 +599,19 @@ function Membership() {
   // Filter & Sort
   const filteredMemberships = enrichedMemberships
     .filter(m => {
+      // Branch filter
+      if (selectedBranchId && selectedBranchId !== 'all') {
+        const belongsToBranch = (m.branch_id === selectedBranchId) || 
+          (m.allowed_branches && m.allowed_branches.includes('all'));
+        if (!belongsToBranch) return false;
+      }
+
       const q = (searchTerm || '').toLowerCase().trim();
       const pName = (m.person_name || '').toLowerCase();
       const pId = (m.person_id || '').toLowerCase();
       const mId = (m.membership_id || m.id || '').toLowerCase();
-      const matchesSearch = !q || pName.includes(q) || pId.includes(q) || mId.includes(q);
+      const bName = (m.branch_name || '').toLowerCase();
+      const matchesSearch = !q || pName.includes(q) || pId.includes(q) || mId.includes(q) || bName.includes(q);
 
       if (!matchesSearch) return false;
 
@@ -589,7 +636,14 @@ function Membership() {
       <div className="membership-header">
         <div>
           <h1 className="membership-title">💳 Membership Management</h1>
-          <p className="membership-subtitle">Track gym passes, renewal dates, and payment history</p>
+          <p className="membership-subtitle">
+            Track gym passes, renewal dates, and payment history
+            {selectedBranchId && selectedBranchId !== 'all' && (
+              <span className="membership-branch-indicator" style={{ marginLeft: '10px', background: 'rgba(135,95,69,0.12)', color: 'var(--c-mocha, #875F45)', padding: '2px 9px', borderRadius: '12px', fontSize: '0.8rem', fontWeight: '700' }}>
+                🏢 Branch: {getBranchName(selectedBranchId)}
+              </span>
+            )}
+          </p>
         </div>
         <div className="membership-header-actions">
           <button 
@@ -729,6 +783,10 @@ function Membership() {
                     <div className="member-ids">
                       <span className="person-id" title="Person ID">{m.person_id}</span>
                       <span className="membership-id" title="Membership ID">{m.membership_id}</span>
+                      <span className="member-branch-badge-pill" title={`Assigned Branch: ${m.branch_name}`}>
+                        🏢 {m.branch_name}
+                        {m.is_roaming && <span className="member-roaming-tag"> • 🌐 Roaming</span>}
+                      </span>
                       {m.phone && (
                         <span className="phone-badge" title="Phone / WhatsApp">📱 {m.phone}</span>
                       )}
@@ -845,15 +903,26 @@ function Membership() {
                     <label>Select Member:</label>
                     <select
                       value={formData.person_id}
-                      onChange={(e) => setFormData({ ...formData, person_id: e.target.value })}
+                      onChange={(e) => {
+                        const pid = e.target.value;
+                        const p = people.find(item => (item.id || item.person_id) === pid);
+                        setFormData(prev => ({
+                          ...prev,
+                          person_id: pid,
+                          phone: p?.phone || prev.phone,
+                          branch_id: p?.home_branch_id || p?.branch_id || prev.branch_id
+                        }));
+                      }}
                       required
                     >
                       <option value="">-- Choose Member --</option>
-                      {people.map(p => (
-                        <option key={p.id || p.person_id} value={p.id || p.person_id}>
-                          {p.name} ({p.id || p.person_id})
-                        </option>
-                      ))}
+                      {people
+                        .filter(p => selectedBranchId === 'all' || (p.home_branch_id || p.branch_id || 'BR-MAIN-001') === selectedBranchId)
+                        .map(p => (
+                          <option key={p.id || p.person_id} value={p.id || p.person_id}>
+                            {p.name} ({p.id || p.person_id}) {selectedBranchId === 'all' ? `• ${getBranchName(p.home_branch_id || p.branch_id)}` : ''}
+                          </option>
+                        ))}
                     </select>
                   </div>
 
@@ -865,6 +934,34 @@ function Membership() {
                       value={formData.phone || ''}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>🏢 Assigned Gym Branch:</label>
+                    <select
+                      value={formData.branch_id}
+                      onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
+                      required
+                    >
+                      {branches.map(b => (
+                        <option key={b.branch_id || b.id} value={b.branch_id || b.id}>
+                          {b.name || b.branch_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '1.2rem', fontWeight: '600', color: 'var(--c-slate)' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.is_roaming}
+                        onChange={(e) => setFormData({ ...formData, is_roaming: e.target.checked })}
+                      />
+                      <span>🌐 Multi-Branch Access (Roaming)</span>
+                    </label>
                   </div>
                 </div>
 
@@ -1022,6 +1119,34 @@ function Membership() {
                       <option value="PARTIAL">PARTIAL</option>
                       <option value="PENDING">PENDING</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>🏢 Assigned Gym Branch:</label>
+                    <select
+                      value={formData.branch_id}
+                      onChange={(e) => setFormData({ ...formData, branch_id: e.target.value })}
+                      required
+                    >
+                      {branches.map(b => (
+                        <option key={b.branch_id || b.id} value={b.branch_id || b.id}>
+                          {b.name || b.branch_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '1.2rem', fontWeight: '600', color: 'var(--c-slate)' }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.is_roaming}
+                        onChange={(e) => setFormData({ ...formData, is_roaming: e.target.checked })}
+                      />
+                      <span>🌐 Multi-Branch Access (Roaming)</span>
+                    </label>
                   </div>
                 </div>
 

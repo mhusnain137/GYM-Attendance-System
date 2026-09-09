@@ -1199,3 +1199,29 @@
   background: #1EBE5D;
   transform: translateY(-1px);
 }
+
+/* Multi-Branch Badge & Filter UI */
+.member-branch-badge-pill {
+  background: rgba(135, 95, 69, 0.08);
+  color: var(--c-mocha, #875F45);
+  border: 1px solid rgba(135, 95, 69, 0.25);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 0.76rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.member-roaming-tag {
+  color: #15803D;
+  font-weight: 800;
+}
+
+.membership-branch-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 1px 4px rgba(135, 95, 69, 0.1);
+}
