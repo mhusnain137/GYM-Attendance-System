@@ -383,10 +383,14 @@ export default async function handler(req, res) {
       USERS_STORE = USERS_STORE.filter(u => u.user_id !== delId && u.id !== delId);
       return res.status(200).json({ status: 'success', message: 'Staff user removed' });
     }
+    const callerRole = (req.headers['x-user-role'] || '').toUpperCase();
     try {
       const db = await getMongoDb();
       if (db) {
-        const dbUsers = await db.collection('users').find({}).toArray();
+        let dbUsers = await db.collection('users').find({}).toArray();
+        if (callerRole !== 'SUPER_ADMIN') {
+          dbUsers = dbUsers.filter(u => u.role !== 'SUPER_ADMIN');
+        }
         if (dbUsers && dbUsers.length > 0) {
           return res.status(200).json(dbUsers.map(u => ({
             user_id: u.user_id,
@@ -399,7 +403,11 @@ export default async function handler(req, res) {
         }
       }
     } catch (e) {}
-    return res.status(200).json(USERS_STORE);
+    let fallbackUsers = USERS_STORE;
+    if (callerRole !== 'SUPER_ADMIN') {
+      fallbackUsers = fallbackUsers.filter(u => u.role !== 'SUPER_ADMIN');
+    }
+    return res.status(200).json(fallbackUsers);
   }
 
   // ==========================================

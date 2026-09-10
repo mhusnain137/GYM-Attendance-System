@@ -231,9 +231,16 @@ async def login(payload: LoginModel):
 @router.get("/users")
 async def get_staff_users(x_role: Optional[str] = Header(None, alias="X-User-Role")):
     """
-    Get list of all staff users (Admin only view)
+    Get list of all staff users.
+    - Super Admin sees everyone.
+    - Gym Owner (Admin) and staff do NOT see Super Admin.
     """
     users = load_json(USERS_FILE, default=[])
+    caller_role = (x_role or "").upper()
+
+    if caller_role != "SUPER_ADMIN":
+        users = [u for u in users if u.get("role") != "SUPER_ADMIN"]
+
     safe_users = [
         {
             "user_id": u["user_id"],
@@ -346,6 +353,9 @@ async def update_staff_password(
     target_user = next((u for u in users if u.get("user_id") == user_id or u.get("username", "").lower() == user_id.lower()), None)
     if not target_user:
         raise HTTPException(status_code=404, detail="Staff user not found")
+
+    if target_user.get("role") == "SUPER_ADMIN" and caller_role != "SUPER_ADMIN":
+        raise HTTPException(status_code=403, detail="Permission Denied: Only Super Admin can modify Super Admin account")
 
     target_user["password"] = new_pass
     target_user["updated_at"] = datetime.now().isoformat()

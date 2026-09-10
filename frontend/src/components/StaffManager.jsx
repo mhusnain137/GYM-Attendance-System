@@ -214,7 +214,9 @@ function StaffManager() {
             </tr>
           </thead>
           <tbody>
-            {users.map(u => {
+            {users
+              .filter(u => isSuperAdmin || u.role !== 'SUPER_ADMIN')
+              .map(u => {
               const isSelf = currentUser && (u.user_id === currentUser.user_id || u.username === currentUser.username);
               const hasPasswordAccess = canChangePasswordFor(u);
               const hasDeleteAccess = canDeleteUser(u);
