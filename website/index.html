@@ -934,7 +934,13 @@
       <form id="demo-form" onsubmit="submitDemoForm(event)">
         <div class="form-group">
           <label for="lead-gym-name">Gym / Fitness Center Name *</label>
-          <input type="text" id="lead-gym-name" placeholder="e.g. Iron Empire Arena" required>
+          <select id="lead-gym-name" required onchange="handleBranchSelect(this)">
+            <option value="" disabled selected>Select Available Gym / Branch...</option>
+            <option value="Titan Gym (Main Branch) - Lahore" data-city="Lahore">Titan Gym (Main Branch) — Lahore</option>
+            <option value="gulberg branch - Faisalabad" data-city="Faisalabad">gulberg branch — Faisalabad</option>
+            <option value="Titan Gym - DHA Phase 5 - Lahore" data-city="Lahore">Titan Gym - DHA Phase 5 — Lahore</option>
+            <option value="Other / New Gym Facility" data-city="">Other / New Gym Facility</option>
+          </select>
         </div>
 
         <div class="form-row">

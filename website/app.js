@@ -502,6 +502,7 @@ function openDemoModal(preselectedPlan = 'PRO') {
   if (modal) {
     modal.classList.add('open');
     document.body.style.overflow = 'hidden';
+    loadAvailableBranches();
   }
 }
 
@@ -513,6 +514,50 @@ function closeDemoModal(event) {
   if (modal) {
     modal.classList.remove('open');
     document.body.style.overflow = '';
+  }
+}
+
+function handleBranchSelect(selectEl) {
+  if (!selectEl) return;
+  const selectedOpt = selectEl.options[selectEl.selectedIndex];
+  const cityInput = document.getElementById('lead-city');
+  if (cityInput && selectedOpt) {
+    const city = selectedOpt.getAttribute('data-city');
+    if (city) {
+      cityInput.value = city;
+    }
+  }
+}
+
+async function loadAvailableBranches() {
+  try {
+    const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+    const res = await fetch(`${apiBase}/api/branches`);
+    if (res.ok) {
+      const branches = await res.json();
+      const select = document.getElementById('lead-gym-name');
+      if (select && Array.isArray(branches) && branches.length > 0) {
+        const currentVal = select.value;
+        select.innerHTML = '<option value="" disabled selected>Select Available Gym / Branch...</option>';
+        branches.forEach(b => {
+          const bName = b.branch_name || b.name || b.branch_id;
+          const bCity = b.city || 'Lahore';
+          const opt = document.createElement('option');
+          opt.value = `${bName} - ${bCity}`;
+          opt.innerText = `${bName} — ${bCity}`;
+          opt.setAttribute('data-city', bCity);
+          if (opt.value === currentVal) opt.selected = true;
+          select.appendChild(opt);
+        });
+        const otherOpt = document.createElement('option');
+        otherOpt.value = "Other / New Gym Facility";
+        otherOpt.innerText = "+ Other / New Gym Facility";
+        otherOpt.setAttribute('data-city', "");
+        select.appendChild(otherOpt);
+      }
+    }
+  } catch (err) {
+    // Network offline or fallback to static HTML options
   }
 }
 
@@ -616,6 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSimClock();
   calculateROI();
   setupScrollListener();
+  loadAvailableBranches();
 
   // Close modal on Escape key
   document.addEventListener('keydown', (e) => {
