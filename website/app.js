@@ -17,7 +17,7 @@ const PRICING_CONFIG = {
     displayPrefix: 'Rs. ',
     basic: { monthly: 14999, annual: 11999, annualYear: 143988 },
     pro:   { monthly: 29999, annual: 23999, annualYear: 287988 },
-    max:   { monthly: 54999, annual: 43999, annualYear: 527988 },
+    max:   { monthly: 59999, annual: 47999, annualYear: 575988 },
     feeSlider: { min: 1500, max: 25000, step: 500, defaultVal: 4500, minLabel: 'Rs. 1,500', maxLabel: 'Rs. 25,000+' }
   },
   USD: {
@@ -25,7 +25,7 @@ const PRICING_CONFIG = {
     displayPrefix: '$',
     basic: { monthly: 49, annual: 39, annualYear: 468 },
     pro:   { monthly: 99, annual: 79, annualYear: 948 },
-    max:   { monthly: 179, annual: 149, annualYear: 1788 },
+    max:   { monthly: 199, annual: 159, annualYear: 1908 },
     feeSlider: { min: 15, max: 150, step: 5, defaultVal: 45, minLabel: '$15', maxLabel: '$150+' }
   }
 };
@@ -132,12 +132,12 @@ function toggleBilling() {
 
   if (isAnnualBilling) {
     if (toggleBtn) toggleBtn.classList.add('annual');
-    if (labelAnnual) labelAnnual.style.color = '#34d399';
-    if (labelMonthly) labelMonthly.style.color = '#94a3b8';
+    if (labelAnnual) { labelAnnual.style.color = '#0f172a'; labelAnnual.style.fontWeight = '800'; }
+    if (labelMonthly) { labelMonthly.style.color = '#64748b'; labelMonthly.style.fontWeight = '500'; }
   } else {
     if (toggleBtn) toggleBtn.classList.remove('annual');
-    if (labelMonthly) labelMonthly.style.color = '#ffffff';
-    if (labelAnnual) labelAnnual.style.color = '#94a3b8';
+    if (labelMonthly) { labelMonthly.style.color = '#0f172a'; labelMonthly.style.fontWeight = '800'; }
+    if (labelAnnual) { labelAnnual.style.color = '#64748b'; labelAnnual.style.fontWeight = '500'; }
   }
 
   updatePricingDisplay();
@@ -469,7 +469,7 @@ function calculateROI() {
   let softwareCost = currentCurrency === 'USD' ? 49 : 14999;
 
   if (branches >= 4 || members > 800) {
-    recommendedPlan = 'Enterprise Max';
+    recommendedPlan = 'Elite Max';
     softwareCost = currentCurrency === 'USD' ? 199 : 59999;
   } else if (branches >= 2 || members > 300) {
     recommendedPlan = 'Pro Plan';
@@ -549,11 +549,6 @@ async function loadAvailableBranches() {
           if (opt.value === currentVal) opt.selected = true;
           select.appendChild(opt);
         });
-        const otherOpt = document.createElement('option');
-        otherOpt.value = "Other / New Gym Facility";
-        otherOpt.innerText = "+ Other / New Gym Facility";
-        otherOpt.setAttribute('data-city', "");
-        select.appendChild(otherOpt);
       }
     }
   } catch (err) {
