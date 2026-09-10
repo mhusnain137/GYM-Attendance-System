@@ -531,7 +531,7 @@ function handleBranchSelect(selectEl) {
 
 async function loadAvailableBranches() {
   try {
-    const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+    const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : 'https://gym-attendance-system-three.vercel.app');
     const res = await fetch(`${apiBase}/api/branches`);
     if (res.ok) {
       const branches = await res.json();
@@ -582,41 +582,32 @@ async function submitDemoForm(event) {
     notes: notes
   };
 
-  const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+  const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : 'https://gym-attendance-system-three.vercel.app');
+
+  const waText = encodeURIComponent(
+    `Assalam o Alaikum! I would like to book a Live Turnstile Demo of Titan Gym OS (${plan} Plan) for ${gymName} (${city}, ${branches} branches). Name: ${contactName}, Phone: ${phone}.`
+  );
+  const waUrl = `https://wa.me/923166868169?text=${waText}`;
+
+  feedback.className = 'form-feedback success';
+  feedback.innerHTML = `✓ Demo requested! Opening WhatsApp VIP Concierge...<br><a href="${waUrl}" target="_blank" style="display:inline-block;margin-top:10px;padding:8px 18px;background:#10b981;color:#ffffff;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;">👉 Tap Here to Open WhatsApp Direct</a>`;
+  feedback.style.display = 'block';
 
   try {
-    const response = await fetch(`${apiBase}/api/saas/demo-request`, {
+    await fetch(`${apiBase}/api/saas/demo-request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      keepalive: true
     });
-
-    feedback.className = 'form-feedback success';
-    feedback.innerText = `✓ Demo requested! Thank you ${contactName}. Opening WhatsApp VIP Concierge...`;
-    feedback.style.display = 'block';
-
-    const waText = encodeURIComponent(
-      `Assalam o Alaikum! I would like to book a Live Turnstile Demo of Titan Gym OS (${plan} Plan) for ${gymName} (${city}, ${branches} branches). Name: ${contactName}, Phone: ${phone}.`
-    );
-
-    setTimeout(() => {
-      window.open(`https://wa.me/923166868169?text=${waText}`, '_blank');
-      closeDemoModal();
-      btn.disabled = false;
-      btn.innerText = '✓ Confirm & Request Live Demo';
-      document.getElementById('demo-form').reset();
-    }, 1200);
-
   } catch (err) {
-    console.warn('Backend offline, connecting via direct WhatsApp lead:', err);
-    const waText = encodeURIComponent(
-      `Assalam o Alaikum! I would like to book a Live Turnstile Demo of Titan Gym OS (${plan} Plan) for ${gymName} (${city}, ${branches} branches). Contact: ${contactName}, Phone: ${phone}.`
-    );
-    window.open(`https://wa.me/923166868169?text=${waText}`, '_blank');
-    closeDemoModal();
-    btn.disabled = false;
-    btn.innerText = '✓ Confirm & Request Live Demo';
+    console.warn('Backend offline or cross-origin notice:', err);
   }
+
+  // Open WhatsApp reliably - window.location.href bypasses browser popup blockers 100%
+  setTimeout(() => {
+    window.location.href = waUrl;
+  }, 400);
 }
 
 // ============================================================

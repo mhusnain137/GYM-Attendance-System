@@ -417,6 +417,7 @@ let CAFE_ORDERS_STORE = [
     "updated_at": "2026-09-01T18:28:29.142377"
   }
 ];
+let DEMO_LEADS_STORE = [];
 let WORKOUT_TEMPLATES_STORE = {
   "P-000002": [
     {
@@ -3491,6 +3492,72 @@ export default function handler(req, res) {
       { id: 2, action: 'Face Verified', user: 'Husnain', timestamp: new Date().toISOString(), details: 'Door Unlocked' },
       { id: 3, action: 'Cafe Item Sold', user: 'Ahsan', timestamp: new Date().toISOString(), details: 'Double Whey Isolate Shake' }
     ]);
+  }
+
+  // 14. SaaS Demo Leads & CRM Endpoints
+  if (url.includes('/saas/') || url.includes('/demo-request')) {
+    if (url.includes('/demo-request') && method === 'POST') {
+      const body = req.body || {};
+      const newLead = {
+        lead_id: `LEAD-${Date.now().toString(36).toUpperCase()}`,
+        gym_name: (body.gym_name || 'Unnamed Gym').trim(),
+        contact_name: (body.contact_name || 'Guest Lead').trim(),
+        phone: (body.phone || '').trim(),
+        email: (body.email || '').trim(),
+        city: (body.city || 'Not Specified').trim(),
+        branch_count: Number(body.branch_count || 1),
+        interested_plan: (body.interested_plan || 'PRO').toUpperCase(),
+        notes: (body.notes || '').trim(),
+        status: 'NEW',
+        is_read: false,
+        created_at: new Date().toISOString()
+      };
+      DEMO_LEADS_STORE.unshift(newLead);
+      return res.status(200).json({
+        success: true,
+        message: `Demo request registered! Thank you ${newLead.contact_name}.`,
+        lead: newLead
+      });
+    }
+
+    if (url.includes('/leads/unread-count') && method === 'GET') {
+      const unread = DEMO_LEADS_STORE.filter(l => !l.is_read);
+      return res.status(200).json({
+        success: true,
+        unread_count: unread.length,
+        total: DEMO_LEADS_STORE.length,
+        latest: unread[0] || (DEMO_LEADS_STORE[0] || null)
+      });
+    }
+
+    if (url.includes('/leads/mark-all-read') && method === 'POST') {
+      DEMO_LEADS_STORE.forEach(l => { l.is_read = true; });
+      return res.status(200).json({ success: true, message: 'All leads marked as read' });
+    }
+
+    if (url.includes('/status') && method === 'PATCH') {
+      const parts = url.split('/');
+      const statusIdx = parts.indexOf('status');
+      const leadId = parts[statusIdx - 1];
+      const body = req.body || {};
+      const lead = DEMO_LEADS_STORE.find(l => l.lead_id === leadId);
+      if (lead) {
+        if (body.status) lead.status = body.status.toUpperCase();
+        if (body.is_read !== undefined) lead.is_read = body.is_read;
+        lead.updated_at = new Date().toISOString();
+        return res.status(200).json({ success: true, lead: lead });
+      }
+      return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    if (method === 'DELETE') {
+      const parts = url.split('/');
+      const leadId = parts[parts.length - 1];
+      DEMO_LEADS_STORE = DEMO_LEADS_STORE.filter(l => l.lead_id !== leadId);
+      return res.status(200).json({ success: true, message: `Lead ${leadId} removed` });
+    }
+
+    return res.status(200).json(DEMO_LEADS_STORE);
   }
 
   // Default fallback response
