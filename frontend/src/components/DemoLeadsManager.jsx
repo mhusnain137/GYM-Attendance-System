@@ -226,7 +226,7 @@ export default function DemoLeadsManager() {
 
                 <div className="card-details-grid">
                   <div className="detail-row">
-                    <span className="d-label">Director / Owner:</span>
+                    <span className="d-label">Customer Name:</span>
                     <span className="d-val strong">{lead.contact_name}</span>
                   </div>
 
