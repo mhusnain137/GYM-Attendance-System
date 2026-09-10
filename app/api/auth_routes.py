@@ -326,3 +326,48 @@ async def delete_staff_user(
         
     save_json(USERS_FILE, filtered_users)
     return {"status": "success", "message": "Staff user account deleted successfully"}
+
+
+@router.put("/users/{user_id}/password")
+@router.put("/users/{user_id}")
+async def update_staff_password(
+    user_id: str,
+    payload: dict,
+    x_role: Optional[str] = Header(None, alias="X-User-Role"),
+    x_user_id: Optional[str] = Header(None, alias="X-User-Id")
+):
+    """
+    Update password for a staff account:
+    - Super Admin can change their own password and any staff/admin password.
+    - Admin (Gym Owner) can change their own password and any Manager/Receptionist password.
+    """
+    caller_role = (x_role or "").upper()
+    if caller_role not in ["ADMIN", "SUPER_ADMIN"]:
+        raise HTTPException(status_code=403, detail="Permission Denied: Only Admin can update staff credentials")
+
+    new_pass = (payload.get("password") or payload.get("new_password") or "").strip()
+    if not new_pass or len(new_pass) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+
+    users = load_json(USERS_FILE, default=[])
+    target_user = next((u for u in users if u.get("user_id") == user_id or u.get("username", "").lower() == user_id.lower()), None)
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Staff user not found")
+
+    target_user["password"] = new_pass
+    target_user["updated_at"] = datetime.now().isoformat()
+    if "name" in payload and payload["name"].strip():
+        target_user["name"] = payload["name"].strip()
+
+    save_json(USERS_FILE, users)
+    return {
+        "status": "success",
+        "message": f"Password for {target_user['name']} (@{target_user['username']}) updated successfully",
+        "user": {
+            "user_id": target_user["user_id"],
+            "username": target_user["username"],
+            "name": target_user["name"],
+            "role": target_user["role"]
+        }
+    }
+

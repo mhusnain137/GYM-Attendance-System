@@ -255,6 +255,21 @@ export default async function handler(req, res) {
   }
 
   if (path.includes('/auth/users') || path.includes('/staff')) {
+    if (method === 'PUT') {
+      const parts = path.split('/').filter(Boolean);
+      let targetId = parts[parts.length - 1];
+      if (targetId === 'password') targetId = parts[parts.length - 2];
+      const body = await parseBody(req);
+      const newPass = (body.password || body.new_password || '').trim();
+      const user = USERS_STORE.find(u => u.user_id === targetId || (u.username || '').toLowerCase() === targetId.toLowerCase());
+      if (user) {
+        if (newPass) user.password = newPass;
+        if (body.name) user.name = body.name.trim();
+        user.updated_at = new Date().toISOString();
+        return res.status(200).json({ status: 'success', message: `Password updated for ${user.name}`, user });
+      }
+      return res.status(404).json({ error: 'Staff user not found' });
+    }
     if (method === 'POST') {
       const body = await parseBody(req);
       const newUser = {
