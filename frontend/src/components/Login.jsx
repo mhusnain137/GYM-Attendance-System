@@ -9,7 +9,13 @@ function Login() {
   
   // Staff Form
   const [username, setUsername] = useState('admin');
-  const [password, setPassword] = useState('admin123');
+  const [password, setPassword] = useState(() => {
+    try {
+      return localStorage.getItem('gym_pwd_admin') || 'admin123';
+    } catch (e) {
+      return 'admin123';
+    }
+  });
   const [showPassword, setShowPassword] = useState(false);
 
   // Member Form
@@ -68,8 +74,13 @@ function Login() {
   };
 
   const fillStaffDemo = (user, pass) => {
+    let actualPass = pass;
+    try {
+      const saved = localStorage.getItem(`gym_pwd_${user.toLowerCase()}`);
+      if (saved) actualPass = saved;
+    } catch (e) {}
     setUsername(user);
-    setPassword(pass);
+    setPassword(actualPass);
     setError('');
   };
 

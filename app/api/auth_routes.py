@@ -140,13 +140,6 @@ async def login(payload: LoginModel):
     if found_user:
         pwd_match = (found_user.get("password") == payload.password.strip())
         if not pwd_match:
-            # Fallback to DEFAULT_USERS if database had mismatched hash
-            default_match = next((du for du in DEFAULT_USERS if du["username"].lower() == username_lower and du["password"] == payload.password.strip()), None)
-            if default_match:
-                found_user = default_match
-                pwd_match = True
-        
-        if not pwd_match:
             raise HTTPException(status_code=401, detail="Invalid username or password")
             
         if not found_user.get("is_active", True):
@@ -358,6 +351,19 @@ async def update_staff_password(
     target_user["updated_at"] = datetime.now().isoformat()
     if "name" in payload and payload["name"].strip():
         target_user["name"] = payload["name"].strip()
+
+    # Direct atomic update in MongoDB
+    if mongo.is_connected():
+        mongo.update_one(
+            "users",
+            {"$or": [{"user_id": target_user["user_id"]}, {"username": target_user["username"]}]},
+            {"password": new_pass, "updated_at": target_user["updated_at"]}
+        )
+
+    # Sync DEFAULT_USERS in memory
+    for du in DEFAULT_USERS:
+        if du.get("user_id") == target_user["user_id"] or du.get("username", "").lower() == target_user["username"].lower():
+            du["password"] = new_pass
 
     save_json(USERS_FILE, users)
     return {

@@ -4,5 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "npm --prefix frontend install && npm --prefix frontend run build"
+  },
+  "dependencies": {
+    "mongodb": "^7.6.0"
   }
 }

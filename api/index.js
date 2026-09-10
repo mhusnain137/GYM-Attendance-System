@@ -2,6 +2,23 @@
 // Mirrored 1-to-1 with Local FastAPI & MongoDB Atlas Datasets
 
 import { INITIAL_DATA } from './authoritative_data.js';
+import { MongoClient } from 'mongodb';
+
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://mhusnain1370_db_user:Gym12345@cluster0.pqth0lx.mongodb.net/gym_identity_db?retryWrites=true&w=majority&appName=Cluster0";
+
+let cachedMongoClient = null;
+async function getMongoDb() {
+  try {
+    if (!cachedMongoClient) {
+      cachedMongoClient = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 5000 });
+      await cachedMongoClient.connect();
+    }
+    return cachedMongoClient.db("gym_identity_db");
+  } catch (e) {
+    console.warn("[Cloud API] MongoDB Atlas connect notice:", e.message);
+    return null;
+  }
+}
 
 // In-Memory Cloud State (Persistent across Lambda Container Invocations)
 let REGISTERED_PEOPLE = JSON.parse(JSON.stringify(INITIAL_DATA.persons || []));
@@ -225,14 +242,34 @@ export default async function handler(req, res) {
       const cleanUser = (body.username || '').trim().toLowerCase();
       const password = (body.password || '').trim();
 
-      const staff = USERS_STORE.find(u => (u.username || '').toLowerCase() === cleanUser);
+      let staff = null;
+      try {
+        const db = await getMongoDb();
+        if (db) {
+          staff = await db.collection('users').findOne({ 
+            username: { $regex: new RegExp(`^${cleanUser}$`, 'i') } 
+          });
+        }
+      } catch (err) {
+        console.warn('[Cloud Auth] Mongo user lookup notice:', err.message);
+      }
+
+      if (!staff) {
+        staff = USERS_STORE.find(u => (u.username || '').toLowerCase() === cleanUser);
+      }
+
       if (staff) {
         if (staff.password === password) {
           return res.status(200).json({
             status: 'success',
             message: 'Login successful',
             token: `token-${staff.user_id || 'USR'}-cloud`,
-            user: staff
+            user: {
+              user_id: staff.user_id,
+              username: staff.username,
+              name: staff.name,
+              role: staff.role
+            }
           });
         }
         return res.status(401).json({ detail: 'Invalid username or password' });
@@ -261,13 +298,56 @@ export default async function handler(req, res) {
       if (targetId === 'password') targetId = parts[parts.length - 2];
       const body = await parseBody(req);
       const newPass = (body.password || body.new_password || '').trim();
+      if (!newPass || newPass.length < 4) {
+        return res.status(400).json({ error: 'Password must be at least 4 characters' });
+      }
+
+      let updatedUser = null;
+      try {
+        const db = await getMongoDb();
+        if (db) {
+          const filter = {
+            $or: [
+              { user_id: targetId },
+              { username: { $regex: new RegExp(`^${targetId}$`, 'i') } }
+            ]
+          };
+          const updateDoc = {
+            $set: {
+              password: newPass,
+              updated_at: new Date().toISOString()
+            }
+          };
+          if (body.name) updateDoc.$set.name = body.name.trim();
+
+          await db.collection('users').updateOne(filter, updateDoc);
+          updatedUser = await db.collection('users').findOne(filter);
+        }
+      } catch (err) {
+        console.warn('[Cloud Auth] Mongo update password notice:', err.message);
+      }
+
       const user = USERS_STORE.find(u => u.user_id === targetId || (u.username || '').toLowerCase() === targetId.toLowerCase());
       if (user) {
-        if (newPass) user.password = newPass;
+        user.password = newPass;
         if (body.name) user.name = body.name.trim();
         user.updated_at = new Date().toISOString();
-        return res.status(200).json({ status: 'success', message: `Password updated for ${user.name}`, user });
+        if (!updatedUser) updatedUser = user;
       }
+
+      if (updatedUser) {
+        return res.status(200).json({
+          status: 'success',
+          message: `Password updated for ${updatedUser.name}`,
+          user: {
+            user_id: updatedUser.user_id,
+            username: updatedUser.username,
+            name: updatedUser.name,
+            role: updatedUser.role
+          }
+        });
+      }
+
       return res.status(404).json({ error: 'Staff user not found' });
     }
     if (method === 'POST') {
@@ -281,14 +361,44 @@ export default async function handler(req, res) {
         is_active: true,
         created_at: new Date().toISOString()
       };
+      try {
+        const db = await getMongoDb();
+        if (db) {
+          await db.collection('users').insertOne(newUser);
+        }
+      } catch (e) {}
       USERS_STORE.push(newUser);
       return res.status(201).json({ status: 'success', user: newUser });
     }
     if (method === 'DELETE') {
       const delId = path.split('/').pop();
+      try {
+        const db = await getMongoDb();
+        if (db) {
+          await db.collection('users').deleteOne({
+            $or: [{ user_id: delId }, { username: delId }]
+          });
+        }
+      } catch (e) {}
       USERS_STORE = USERS_STORE.filter(u => u.user_id !== delId && u.id !== delId);
       return res.status(200).json({ status: 'success', message: 'Staff user removed' });
     }
+    try {
+      const db = await getMongoDb();
+      if (db) {
+        const dbUsers = await db.collection('users').find({}).toArray();
+        if (dbUsers && dbUsers.length > 0) {
+          return res.status(200).json(dbUsers.map(u => ({
+            user_id: u.user_id,
+            username: u.username,
+            name: u.name,
+            role: u.role,
+            is_active: u.is_active !== false,
+            created_at: u.created_at || ''
+          })));
+        }
+      }
+    } catch (e) {}
     return res.status(200).json(USERS_STORE);
   }
 

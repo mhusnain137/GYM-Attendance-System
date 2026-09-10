@@ -105,6 +105,12 @@ function StaffManager() {
         password: newPassword
       });
 
+      try {
+        if (passwordModal.user?.username) {
+          localStorage.setItem(`gym_pwd_${passwordModal.user.username.toLowerCase()}`, newPassword);
+        }
+      } catch (e) {}
+
       setPasswordSuccess(res.data?.message || 'Password updated successfully!');
       setTimeout(() => {
         setPasswordModal({ show: false, user: null });
