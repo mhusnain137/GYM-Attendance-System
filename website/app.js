@@ -558,7 +558,7 @@ async function submitDemoForm(event) {
     );
 
     setTimeout(() => {
-      window.open(`https://wa.me/923001234567?text=${waText}`, '_blank');
+      window.open(`https://wa.me/923166868169?text=${waText}`, '_blank');
       closeDemoModal();
       btn.disabled = false;
       btn.innerText = '✓ Confirm & Request Live Demo';
@@ -570,7 +570,7 @@ async function submitDemoForm(event) {
     const waText = encodeURIComponent(
       `Assalam o Alaikum! I would like to book a Live Turnstile Demo of Titan Gym OS (${plan} Plan) for ${gymName} (${city}, ${branches} branches). Contact: ${contactName}, Phone: ${phone}.`
     );
-    window.open(`https://wa.me/923001234567?text=${waText}`, '_blank');
+    window.open(`https://wa.me/923166868169?text=${waText}`, '_blank');
     closeDemoModal();
     btn.disabled = false;
     btn.innerText = '✓ Confirm & Request Live Demo';
