@@ -465,14 +465,14 @@ function calculateROI() {
   document.getElementById('roi-leakage').innerText = prefix + monthlyLeakage.toLocaleString();
 
   // Tier Recommendation
-  let recommendedPlan = '🥉 Basic Plan';
+  let recommendedPlan = 'Basic Plan';
   let softwareCost = currentCurrency === 'USD' ? 49 : 14999;
 
   if (branches >= 4 || members > 800) {
-    recommendedPlan = '🥇 Max Plan';
-    softwareCost = currentCurrency === 'USD' ? 179 : 54999;
+    recommendedPlan = 'Enterprise Max';
+    softwareCost = currentCurrency === 'USD' ? 199 : 59999;
   } else if (branches >= 2 || members > 300) {
-    recommendedPlan = '🥈 Pro Plan';
+    recommendedPlan = 'Pro Plan';
     softwareCost = currentCurrency === 'USD' ? 99 : 29999;
   }
 
