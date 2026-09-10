@@ -1,6 +1,7 @@
 {
   "name": "gym-attendance-system-fullstack",
   "private": true,
+  "type": "module",
   "scripts": {
     "build": "npm --prefix frontend install && npm --prefix frontend run build"
   }
