@@ -2216,7 +2216,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
   .container-fluid {
     padding: 0 20px;
   }
-  .nav-links, #btn-login-system {
+  .nav-links {
     display: none;
   }
   .mobile-menu-btn {
