@@ -2146,10 +2146,19 @@ export const INITIAL_DATA = {
   ],
   "users": [
     {
+      "user_id": "USR-000",
+      "username": "superadmin",
+      "password": "admin123",
+      "name": "Husnain (Software Creator & SaaS Provider)",
+      "role": "SUPER_ADMIN",
+      "is_active": true,
+      "created_at": "2026-09-01T12:00:00"
+    },
+    {
       "user_id": "USR-001",
       "username": "admin",
       "password": "admin123",
-      "name": "Gym Owner (Super Admin)",
+      "name": "Gym Owner (Titan Gym Head)",
       "role": "ADMIN",
       "is_active": true,
       "created_at": "2026-09-01T17:40:00"

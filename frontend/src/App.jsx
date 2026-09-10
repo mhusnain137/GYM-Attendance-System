@@ -55,7 +55,7 @@ class ErrorBoundary extends React.Component {
 }
 
 function AppContent() {
-  const { isAuthenticated, role, user, logout, isAdmin, isManager, isReceptionist, isMember, canManageStaff } = useAuth();
+  const { isAuthenticated, role, user, logout, isSuperAdmin, isAdmin, isManager, isReceptionist, isMember, canManageStaff, canViewLeadsCRM } = useAuth();
   const { branches, selectedBranchId, setSelectedBranchId } = useBranch();
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [systemStatus, setSystemStatus] = useState({
@@ -94,7 +94,7 @@ function AppContent() {
   };
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!canViewLeadsCRM) return;
 
     const checkLeads = async () => {
       try {
@@ -226,7 +226,7 @@ function AppContent() {
       case 'staff':
         return isAdmin ? <StaffManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'leads':
-        return isAdmin ? <DemoLeadsManager /> : <Dashboard systemStatus={systemStatus} />;
+        return canViewLeadsCRM ? <DemoLeadsManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'settings':
         return isAdmin ? <Settings /> : <Dashboard systemStatus={systemStatus} />;
       default:
@@ -372,8 +372,8 @@ function AppContent() {
             )}
           </div>
 
-          {/* SaaS Demo Leads Notification Bell (Admin Only) */}
-          {isAdmin && (
+          {/* SaaS Demo Leads Notification Bell (Super Admin Only) */}
+          {canViewLeadsCRM && (
             <div style={{ position: 'relative' }}>
               <button 
                 style={{
@@ -614,26 +614,28 @@ function AppContent() {
                     <span>Activity Audit Log</span>
                   </div>
 
-                  <div 
-                    className={`sidebar-nav-item ${currentPage === 'leads' ? 'active' : ''}`}
-                    onClick={() => setCurrentPage('leads')}
-                  >
-                    <span className="nav-item-icon">📬</span>
-                    <span>Demo Leads CRM</span>
-                    {unreadLeadsCount > 0 && (
-                      <span style={{
-                        marginLeft: 'auto',
-                        background: '#ef4444',
-                        color: '#ffffff',
-                        fontSize: '0.68rem',
-                        fontWeight: 900,
-                        padding: '1px 6px',
-                        borderRadius: '9999px'
-                      }}>
-                        {unreadLeadsCount}
-                      </span>
-                    )}
-                  </div>
+                  {canViewLeadsCRM && (
+                    <div 
+                      className={`sidebar-nav-item ${currentPage === 'leads' ? 'active' : ''}`}
+                      onClick={() => setCurrentPage('leads')}
+                    >
+                      <span className="nav-item-icon">📬</span>
+                      <span>Demo Leads CRM</span>
+                      {unreadLeadsCount > 0 && (
+                        <span style={{
+                          marginLeft: 'auto',
+                          background: '#ef4444',
+                          color: '#ffffff',
+                          fontSize: '0.68rem',
+                          fontWeight: 900,
+                          padding: '1px 6px',
+                          borderRadius: '9999px'
+                        }}>
+                          {unreadLeadsCount}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   <div 
                     className={`sidebar-nav-item ${currentPage === 'settings' ? 'active' : ''}`}

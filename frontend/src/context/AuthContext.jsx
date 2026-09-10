@@ -4,6 +4,7 @@ import axios from 'axios';
 const AuthContext = createContext();
 
 export const ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
   ADMIN: 'ADMIN',
   MANAGER: 'MANAGER',
   RECEPTIONIST: 'RECEPTIONIST',
@@ -11,7 +12,8 @@ export const ROLES = {
 };
 
 export const ROLE_LABELS = {
-  ADMIN: '👑 Admin (Owner)',
+  SUPER_ADMIN: '👑 Super Admin (Software Creator)',
+  ADMIN: '🏢 Admin (Gym Owner)',
   MANAGER: '👔 Manager (Supervisor)',
   RECEPTIONIST: '🛎️ Receptionist (Front Desk)',
   MEMBER: '🏋️ Gym Member (Customer Portal)'
@@ -119,11 +121,14 @@ export function AuthProvider({ children }) {
     setUser(null);
   };
 
-  const isAdmin = role === ROLES.ADMIN;
+  const isSuperAdmin = role === ROLES.SUPER_ADMIN;
+  const isAdmin = role === ROLES.ADMIN || role === ROLES.SUPER_ADMIN;
+  const isGymOwner = role === ROLES.ADMIN;
   const isManager = role === ROLES.MANAGER;
   const isReceptionist = role === ROLES.RECEPTIONIST;
   const isMember = role === ROLES.MEMBER;
 
+  const canViewLeadsCRM = isSuperAdmin; // ONLY the software maker / SaaS Provider can view demo leads
   const canDelete = isAdmin;
   const canManageStaff = isAdmin;
   const canEditSettings = isAdmin;
@@ -139,10 +144,13 @@ export function AuthProvider({ children }) {
       login,
       loginAsMember,
       logout,
+      isSuperAdmin,
       isAdmin,
+      isGymOwner,
       isManager,
       isReceptionist,
       isMember,
+      canViewLeadsCRM,
       canDelete,
       canManageStaff,
       canEditSettings,

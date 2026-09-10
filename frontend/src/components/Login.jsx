@@ -190,14 +190,24 @@ function Login() {
                 <button 
                   type="button" 
                   className="demo-chip-btn"
-                  onClick={() => fillStaffDemo('admin', 'admin123')}
+                  onClick={() => fillStaffDemo('superadmin', 'admin123')}
+                  title="Software Maker (Full System + Demo Leads CRM)"
                 >
                   👑 Super Admin
                 </button>
                 <button 
                   type="button" 
                   className="demo-chip-btn"
+                  onClick={() => fillStaffDemo('admin', 'admin123')}
+                  title="Gym Owner (Full Gym Access, No Demo Leads)"
+                >
+                  🏢 Gym Owner (Admin)
+                </button>
+                <button 
+                  type="button" 
+                  className="demo-chip-btn"
                   onClick={() => fillStaffDemo('manager', 'manager123')}
+                  title="Floor Supervisor"
                 >
                   👔 Floor Manager
                 </button>
@@ -205,6 +215,7 @@ function Login() {
                   type="button" 
                   className="demo-chip-btn"
                   onClick={() => fillStaffDemo('reception', 'reception123')}
+                  title="Front Desk Receptionist"
                 >
                   🛎️ Receptionist
                 </button>
