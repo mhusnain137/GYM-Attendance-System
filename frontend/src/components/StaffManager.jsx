@@ -330,33 +330,37 @@ function StaffManager() {
       {/* 1. CHANGE PASSWORD MODAL */}
       {/* ======================================================== */}
       {passwordModal.show && passwordModal.user && (
-        <div className="customizer-backdrop" style={{ zIndex: 1100 }}>
-          <div className="customizer-card" style={{ maxWidth: '440px' }}>
-            <div className="customizer-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div className="staff-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setPasswordModal({ show: false, user: null }); }}>
+          <div className="staff-modal-card">
+            <div className="staff-modal-header">
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>🔑 Update Password</h3>
-                <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                  User: <strong>{passwordModal.user.name}</strong> (@{passwordModal.user.username})
-                </p>
+                <h3>🔑 Update Password</h3>
+                <div style={{ margin: '3px 0 0', fontSize: '0.8rem', color: 'var(--c-slate-light, #64748b)' }}>
+                  User: <strong style={{ color: 'var(--c-slate, #1e293b)' }}>{passwordModal.user.name}</strong> 
+                  <span style={{ marginLeft: '6px', fontFamily: 'monospace', color: 'var(--c-mocha, #875F45)', fontWeight: 700 }}>
+                    @{passwordModal.user.username}
+                  </span>
+                </div>
               </div>
               <button 
+                className="staff-modal-close-btn"
                 onClick={() => setPasswordModal({ show: false, user: null })}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+                title="Close"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleUpdatePassword} className="customizer-body" style={{ padding: '1.25rem' }}>
+            <form onSubmit={handleUpdatePassword} className="staff-modal-body">
               {passwordError && (
                 <div style={{
-                  background: 'rgba(239, 68, 68, 0.12)',
-                  border: '1px solid #ef4444',
-                  color: '#ef4444',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.82rem',
-                  marginBottom: '12px'
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1.5px solid #ef4444',
+                  color: '#dc2626',
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.84rem',
+                  fontWeight: 600
                 }}>
                   ⚠️ {passwordError}
                 </div>
@@ -364,46 +368,36 @@ function StaffManager() {
 
               {passwordSuccess && (
                 <div style={{
-                  background: 'rgba(16, 185, 129, 0.12)',
-                  border: '1px solid #10b981',
-                  color: '#10b981',
-                  padding: '8px 12px',
-                  borderRadius: '6px',
-                  fontSize: '0.82rem',
-                  marginBottom: '12px'
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  border: '1.5px solid #10b981',
+                  color: '#059669',
+                  padding: '9px 14px',
+                  borderRadius: '10px',
+                  fontSize: '0.84rem',
+                  fontWeight: 600
                 }}>
                   ✅ {passwordSuccess}
                 </div>
               )}
 
-              <div style={{ marginBottom: '14px' }}>
-                <label className="form-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.82rem' }}>
-                  New Password
+              <div className="staff-field-group">
+                <label className="staff-field-label">
+                  🔑 New Password <span className="req">*</span>
                 </label>
-                <div style={{ position: 'relative' }}>
+                <div className="staff-input-wrapper">
                   <input 
                     type={showPasswordText ? 'text' : 'password'}
                     required
-                    placeholder="Enter new password (min 4 chars)"
+                    placeholder="Enter new password (min. 4 characters)"
                     value={newPassword}
                     onChange={e => setNewPassword(e.target.value)}
-                    className="form-input"
-                    style={{ width: '100%', boxSizing: 'border-box', paddingRight: '40px' }}
+                    className="staff-modal-input"
                     autoFocus
                   />
                   <button
                     type="button"
+                    className="staff-eye-btn"
                     onClick={() => setShowPasswordText(!showPasswordText)}
-                    style={{
-                      position: 'absolute',
-                      right: '8px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '0.9rem'
-                    }}
                     title={showPasswordText ? 'Hide password' : 'Show password'}
                   >
                     {showPasswordText ? '🙈' : '👁️'}
@@ -411,41 +405,53 @@ function StaffManager() {
                 </div>
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label className="form-label" style={{ display: 'block', marginBottom: '4px', fontSize: '0.82rem' }}>
-                  Confirm New Password
+              <div className="staff-field-group">
+                <label className="staff-field-label">
+                  🔒 Confirm New Password <span className="req">*</span>
                 </label>
-                <input 
-                  type={showPasswordText ? 'text' : 'password'}
-                  required
-                  placeholder="Re-type new password"
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  className="form-input"
-                  style={{ width: '100%', boxSizing: 'border-box' }}
-                />
+                <div className="staff-input-wrapper">
+                  <input 
+                    type={showPasswordText ? 'text' : 'password'}
+                    required
+                    placeholder="Re-type new password to confirm"
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    className="staff-modal-input"
+                  />
+                  <button
+                    type="button"
+                    className="staff-eye-btn"
+                    onClick={() => setShowPasswordText(!showPasswordText)}
+                    title={showPasswordText ? 'Hide password' : 'Show password'}
+                  >
+                    {showPasswordText ? '🙈' : '👁️'}
+                  </button>
+                </div>
+                {confirmPassword.length > 0 && (
+                  newPassword === confirmPassword ? (
+                    <div className="staff-validation-hint valid">
+                      ✓ Passwords match
+                    </div>
+                  ) : (
+                    <div className="staff-validation-hint invalid">
+                      ⚠️ Passwords do not match yet
+                    </div>
+                  )
+                )}
               </div>
 
-              <div className="customizer-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '10px' }}>
+              <div className="staff-modal-footer" style={{ margin: '0.5rem -1.5rem -1.5rem -1.5rem' }}>
                 <button 
                   type="button"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid var(--border-color, #cbd5e1)',
-                    color: 'var(--text-secondary, #64748b)',
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
+                  className="staff-btn-cancel"
                   onClick={() => setPasswordModal({ show: false, user: null })}
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
-                  className="checkout-btn" 
+                  className="staff-btn-save" 
                   disabled={savingPassword}
-                  style={{ margin: 0, padding: '0.5rem 1.3rem' }}
                 >
                   {savingPassword ? 'Updating...' : '💾 Save New Password'}
                 </button>
@@ -459,61 +465,66 @@ function StaffManager() {
       {/* 2. CREATE STAFF MODAL */}
       {/* ======================================================== */}
       {showCreateModal && (
-        <div className="customizer-backdrop">
-          <div className="customizer-card" style={{ maxWidth: '420px' }}>
-            <div className="customizer-header">
-              <h3>Add New Staff Account</h3>
+        <div className="staff-modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) setShowCreateModal(false); }}>
+          <div className="staff-modal-card">
+            <div className="staff-modal-header">
+              <h3>👔 Add New Staff Account</h3>
               <button 
+                className="staff-modal-close-btn"
                 onClick={() => setShowCreateModal(false)}
-                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.2rem', cursor: 'pointer' }}
+                title="Close"
               >
                 ✕
               </button>
             </div>
 
-            <form onSubmit={handleCreateUser} className="customizer-body">
-              <div>
-                <label className="form-label">Full Name</label>
+            <form onSubmit={handleCreateUser} className="staff-modal-body">
+              <div className="staff-field-group">
+                <label className="staff-field-label">Full Name <span className="req">*</span></label>
                 <input 
                   type="text" 
                   required
                   placeholder="e.g. Usman Ali"
                   value={form.name}
                   onChange={e => setForm({ ...form, name: e.target.value })}
-                  className="form-input"
+                  className="staff-modal-input"
+                  style={{ paddingRight: '1rem' }}
                 />
               </div>
 
-              <div>
-                <label className="form-label">Username</label>
+              <div className="staff-field-group">
+                <label className="staff-field-label">Username <span className="req">*</span></label>
                 <input 
                   type="text" 
                   required
                   placeholder="e.g. usman_manager"
                   value={form.username}
                   onChange={e => setForm({ ...form, username: e.target.value })}
-                  className="form-input"
+                  className="staff-modal-input"
+                  style={{ paddingRight: '1rem' }}
                 />
               </div>
 
-              <div>
-                <label className="form-label">Password</label>
+              <div className="staff-field-group">
+                <label className="staff-field-label">Password <span className="req">*</span></label>
                 <input 
                   type="password" 
                   required
                   placeholder="••••••••"
                   value={form.password}
                   onChange={e => setForm({ ...form, password: e.target.value })}
-                  className="form-input"
+                  className="staff-modal-input"
+                  style={{ paddingRight: '1rem' }}
                 />
               </div>
 
-              <div>
-                <label className="form-label">Role</label>
+              <div className="staff-field-group">
+                <label className="staff-field-label">System Role <span className="req">*</span></label>
                 <select 
                   value={form.role}
                   onChange={e => setForm({ ...form, role: e.target.value })}
-                  className="form-select"
+                  className="staff-modal-input"
+                  style={{ paddingRight: '1rem', cursor: 'pointer' }}
                 >
                   <option value="RECEPTIONIST">🛎️ Receptionist (Front Desk & Billing)</option>
                   <option value="MANAGER">👔 Manager (Gym Floor Supervisor)</option>
@@ -523,16 +534,16 @@ function StaffManager() {
                 </select>
               </div>
 
-              <div className="customizer-footer" style={{ padding: '0.5rem 0 0 0' }}>
+              <div className="staff-modal-footer" style={{ margin: '0.5rem -1.5rem -1.5rem -1.5rem' }}>
                 <button 
                   type="button"
-                  style={{ background: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer' }}
+                  className="staff-btn-cancel"
                   onClick={() => setShowCreateModal(false)}
                 >
                   Cancel
                 </button>
-                <button type="submit" className="checkout-btn" style={{ margin: 0, padding: '0.5rem 1.25rem' }}>
-                  Create Account
+                <button type="submit" className="staff-btn-save">
+                  + Create Account
                 </button>
               </div>
             </form>
