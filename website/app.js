@@ -542,8 +542,10 @@ async function submitDemoForm(event) {
     notes: notes
   };
 
+  const apiBase = window.TITAN_API_BASE || (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8000' : '');
+
   try {
-    const response = await fetch('http://localhost:8000/api/saas/demo-request', {
+    const response = await fetch(`${apiBase}/api/saas/demo-request`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)

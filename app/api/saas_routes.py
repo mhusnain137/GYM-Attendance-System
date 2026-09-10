@@ -150,6 +150,10 @@ async def get_plans():
         "discount_annual_percentage": 20
     }
 
+class UpdateLeadStatusRequest(BaseModel):
+    status: Optional[str] = None
+    is_read: Optional[bool] = None
+
 @router.post('/demo-request')
 async def request_demo(payload: DemoLeadRequest):
     """Handle new demo inquiries and sales leads from gym owners"""
@@ -165,6 +169,7 @@ async def request_demo(payload: DemoLeadRequest):
         "interested_plan": payload.interested_plan.upper() if payload.interested_plan else "PRO",
         "notes": payload.notes.strip() if payload.notes else "",
         "status": "NEW",
+        "is_read": False,
         "created_at": datetime.now().isoformat()
     }
     leads.insert(0, new_lead)
@@ -188,3 +193,58 @@ async def request_demo(payload: DemoLeadRequest):
 async def get_demo_leads():
     """Internal list of sales leads"""
     return load_leads()
+
+@router.get('/leads/unread-count')
+async def get_unread_leads_count():
+    """Get number of unread demo leads for top navbar notification bell"""
+    leads = load_leads()
+    unread = [l for l in leads if not l.get('is_read', False)]
+    latest = unread[0] if unread else (leads[0] if leads else None)
+    return {
+        "success": True,
+        "unread_count": len(unread),
+        "total": len(leads),
+        "latest": latest
+    }
+
+@router.post('/leads/mark-all-read')
+async def mark_all_leads_read():
+    """Mark all unread demo leads as read"""
+    leads = load_leads()
+    for l in leads:
+        l['is_read'] = True
+    save_leads(leads)
+    return {"success": True, "message": "All leads marked as read"}
+
+@router.patch('/leads/{lead_id}/status')
+async def update_lead_status(lead_id: str, payload: UpdateLeadStatusRequest):
+    """Update lead status or mark as read"""
+    leads = load_leads()
+    target = None
+    for l in leads:
+        if l.get('lead_id') == lead_id:
+            target = l
+            break
+    if not target:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    if payload.status:
+        target['status'] = payload.status.upper()
+    if payload.is_read is not None:
+        target['is_read'] = payload.is_read
+    
+    target['updated_at'] = datetime.now().isoformat()
+    save_leads(leads)
+    return {"success": True, "lead": target}
+
+@router.delete('/leads/{lead_id}')
+async def delete_lead(lead_id: str):
+    """Delete a sales lead inquiry"""
+    leads = load_leads()
+    initial_len = len(leads)
+    leads = [l for l in leads if l.get('lead_id') != lead_id]
+    if len(leads) == initial_len:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    save_leads(leads)
+    return {"success": True, "message": f"Lead {lead_id} removed"}
+

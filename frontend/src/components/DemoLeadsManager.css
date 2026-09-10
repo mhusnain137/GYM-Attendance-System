@@ -1,0 +1,450 @@
+/* DemoLeadsManager.css — Executive CRM & Lead Pipeline styling */
+
+.crm-leads-container {
+  padding: 24px 32px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.crm-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748b);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.crm-breadcrumb .sep {
+  opacity: 0.4;
+}
+
+.crm-breadcrumb .active {
+  color: #2563eb;
+}
+
+.crm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.crm-title {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  margin: 0 0 4px 0;
+  letter-spacing: -0.02em;
+}
+
+.crm-subtitle {
+  color: var(--text-secondary, #475569);
+  font-size: 0.92rem;
+  margin: 0;
+}
+
+.crm-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.crm-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.crm-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.crm-btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 9px 16px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.crm-btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* KPI Stats Grid */
+.crm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.crm-stat-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.crm-stat-card.highlight-amber {
+  border-left: 4px solid #f59e0b;
+}
+
+.crm-stat-card.highlight-blue {
+  border-left: 4px solid #2563eb;
+}
+
+.crm-stat-card.highlight-green {
+  border-left: 4px solid #10b981;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted, #64748b);
+  letter-spacing: 0.05em;
+  margin-bottom: 8px;
+}
+
+.stat-val {
+  font-size: 1.85rem;
+  font-weight: 900;
+  color: var(--text-primary, #0f172a);
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stat-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* Controls Bar */
+.crm-controls-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.crm-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.crm-tab-btn {
+  background: transparent;
+  border: none;
+  padding: 7px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.crm-tab-btn:hover {
+  background: #f1f5f9;
+}
+
+.crm-tab-btn.active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.crm-search-box input {
+  padding: 7px 14px;
+  border: 1px solid var(--border-subtle, #cbd5e1);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  min-width: 240px;
+  background: var(--bg-surface-alt, #f8fafc);
+  color: var(--text-primary, #0f172a);
+}
+
+.crm-search-box input:focus {
+  outline: none;
+  border-color: #2563eb;
+}
+
+/* Leads Grid */
+.crm-leads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 18px;
+}
+
+.crm-lead-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.crm-lead-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px -4px rgba(15, 23, 42, 0.08);
+}
+
+.crm-lead-card.unread-card {
+  border-left: 4px solid #3b82f6;
+  background: #f8fbff;
+}
+
+.card-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.card-id-pill {
+  font-family: monospace;
+  font-size: 0.74rem;
+  font-weight: 700;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 3px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-dot-pill {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.65rem;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-weight: 900;
+}
+
+.card-time {
+  font-size: 0.76rem;
+  color: var(--text-muted, #94a3b8);
+}
+
+.card-gym-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-primary, #0f172a);
+  margin-bottom: 12px;
+}
+
+.card-details-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: 0.86rem;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.d-label {
+  color: var(--text-muted, #64748b);
+  font-size: 0.8rem;
+}
+
+.d-val {
+  color: var(--text-primary, #1e293b);
+  font-weight: 600;
+}
+
+.d-val.strong {
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.d-val.phone-val {
+  font-family: monospace;
+  font-weight: 700;
+  color: #0369a1;
+}
+
+.plan-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+
+.plan-badge.basic {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.plan-badge.pro {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.plan-badge.max, .plan-badge.enterprise {
+  background: #f5f3ff;
+  color: #6d28d9;
+  border: 1px solid #ddd6fe;
+}
+
+.card-notes-box {
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  color: #334155;
+  margin-bottom: 16px;
+}
+
+.card-footer-actions {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.status-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-selector-wrap label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.status-selector-wrap select {
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.buttons-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.btn-action-wa {
+  background: #10b981;
+  color: #ffffff;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: background 0.15s ease;
+}
+
+.btn-action-wa:hover {
+  background: #059669;
+}
+
+.btn-action-call {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-action-call:hover {
+  background: #e2e8f0;
+}
+
+.btn-action-del {
+  background: transparent;
+  border: 1px solid #fee2e2;
+  color: #ef4444;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.btn-action-del:hover {
+  background: #fef2f2;
+}
+
+.crm-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  background: var(--bg-surface, #ffffff);
+  border: 1px dashed var(--border-subtle, #cbd5e1);
+  border-radius: 12px;
+}
+
+.empty-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+}
+
+.crm-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 12px auto;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

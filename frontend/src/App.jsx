@@ -10,6 +10,7 @@ import StaffManager from './components/StaffManager';
 import MemberPortal from './components/MemberPortal';
 import MemberWorkouts from './components/MemberWorkouts';
 import BranchManager from './components/BranchManager';
+import DemoLeadsManager from './components/DemoLeadsManager';
 import Login from './components/Login';
 import { AuthProvider, useAuth, ROLES, ROLE_LABELS } from './context/AuthContext';
 import { BranchProvider, useBranch } from './context/BranchContext';
@@ -68,6 +69,66 @@ function AppContent() {
   const [showThemeDropdown, setShowThemeDropdown] = useState(false);
   const [showBranchDropdown, setShowBranchDropdown] = useState(false);
   const [avatarTimestamp, setAvatarTimestamp] = useState(Date.now());
+  const [unreadLeadsCount, setUnreadLeadsCount] = useState(0);
+  const [latestLead, setLatestLead] = useState(null);
+  const [showLeadsDropdown, setShowLeadsDropdown] = useState(false);
+  const [leadToast, setLeadToast] = useState({ show: false, lead: null });
+
+  const playLeadNotificationChime = () => {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {
+      // AudioContext policy
+    }
+  };
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const checkLeads = async () => {
+      try {
+        const res = await fetch('/api/saas/leads/unread-count');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) {
+            setUnreadLeadsCount(prev => {
+              if (data.unread_count > prev && data.latest) {
+                playLeadNotificationChime();
+                setLeadToast({ show: true, lead: data.latest });
+                setTimeout(() => setLeadToast(p => ({ ...p, show: false })), 7000);
+              }
+              return data.unread_count;
+            });
+            setLatestLead(data.latest);
+          }
+        }
+      } catch (err) {
+        // network drop ignored
+      }
+    };
+
+    checkLeads();
+    const leadsInterval = setInterval(checkLeads, 15000);
+
+    const handleLeadsUpdated = () => checkLeads();
+    window.addEventListener('saas-leads-updated', handleLeadsUpdated);
+
+    return () => {
+      clearInterval(leadsInterval);
+      window.removeEventListener('saas-leads-updated', handleLeadsUpdated);
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     const handleAvatarUpdated = (e) => {
@@ -164,6 +225,8 @@ function AppContent() {
         return isAdmin ? <BranchManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'staff':
         return isAdmin ? <StaffManager /> : <Dashboard systemStatus={systemStatus} />;
+      case 'leads':
+        return isAdmin ? <DemoLeadsManager /> : <Dashboard systemStatus={systemStatus} />;
       case 'settings':
         return isAdmin ? <Settings /> : <Dashboard systemStatus={systemStatus} />;
       default:
@@ -309,6 +372,110 @@ function AppContent() {
             )}
           </div>
 
+          {/* SaaS Demo Leads Notification Bell (Admin Only) */}
+          {isAdmin && (
+            <div style={{ position: 'relative' }}>
+              <button 
+                style={{
+                  background: unreadLeadsCount > 0 ? 'rgba(239, 68, 68, 0.12)' : 'var(--c-sand-light, #FAF8F5)',
+                  border: unreadLeadsCount > 0 ? '1.5px solid #ef4444' : '1.5px solid var(--c-sand, #D8D2C8)',
+                  color: unreadLeadsCount > 0 ? '#dc2626' : 'var(--c-slate, #344054)',
+                  padding: '6px 12px',
+                  borderRadius: '9999px',
+                  fontSize: '0.85rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  position: 'relative'
+                }}
+                onClick={() => setShowLeadsDropdown(!showLeadsDropdown)}
+                title="SaaS Demo Inquiries"
+              >
+                🔔
+                {unreadLeadsCount > 0 && (
+                  <span style={{
+                    background: '#ef4444',
+                    color: '#ffffff',
+                    fontSize: '0.68rem',
+                    fontWeight: 900,
+                    padding: '1px 6px',
+                    borderRadius: '9999px',
+                    lineHeight: '1.2'
+                  }}>
+                    {unreadLeadsCount} NEW
+                  </span>
+                )}
+              </button>
+
+              {showLeadsDropdown && (
+                <div style={{
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  right: 0,
+                  width: '320px',
+                  background: 'var(--bg-surface, #ffffff)',
+                  border: '1px solid var(--border-subtle, #e2e8f0)',
+                  borderRadius: '12px',
+                  boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.15)',
+                  zIndex: 1000,
+                  padding: '14px',
+                  color: 'var(--text-primary, #0f172a)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <strong style={{ fontSize: '0.85rem' }}>Demo Inquiries</strong>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #64748b)' }}>
+                      {unreadLeadsCount} Unread
+                    </span>
+                  </div>
+
+                  {latestLead ? (
+                    <div style={{
+                      background: 'var(--bg-surface-alt, #f8fafc)',
+                      border: '1px solid var(--border-subtle, #e2e8f0)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      marginBottom: '10px'
+                    }}>
+                      <div style={{ fontSize: '0.86rem', fontWeight: 800, color: '#0f172a', marginBottom: '2px' }}>
+                        {latestLead.gym_name}
+                      </div>
+                      <div style={{ fontSize: '0.78rem', color: '#475569' }}>
+                        {latestLead.contact_name} • {latestLead.city}
+                      </div>
+                      <div style={{ fontSize: '0.74rem', color: '#0284c7', fontWeight: 700, marginTop: '4px' }}>
+                        {latestLead.interested_plan || 'PRO'} Plan Request
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '8px 0' }}>No pending inquiries</p>
+                  )}
+
+                  <button
+                    style={{
+                      width: '100%',
+                      background: '#2563eb',
+                      color: '#ffffff',
+                      border: 'none',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => {
+                      setCurrentPage('leads');
+                      setShowLeadsDropdown(false);
+                    }}
+                  >
+                    Open Full CRM Leads ➔
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Theme Dropdown */}
           <div style={{ position: 'relative' }}>
             <button 
@@ -448,6 +615,27 @@ function AppContent() {
                   </div>
 
                   <div 
+                    className={`sidebar-nav-item ${currentPage === 'leads' ? 'active' : ''}`}
+                    onClick={() => setCurrentPage('leads')}
+                  >
+                    <span className="nav-item-icon">📬</span>
+                    <span>Demo Leads CRM</span>
+                    {unreadLeadsCount > 0 && (
+                      <span style={{
+                        marginLeft: 'auto',
+                        background: '#ef4444',
+                        color: '#ffffff',
+                        fontSize: '0.68rem',
+                        fontWeight: 900,
+                        padding: '1px 6px',
+                        borderRadius: '9999px'
+                      }}>
+                        {unreadLeadsCount}
+                      </span>
+                    )}
+                  </div>
+
+                  <div 
                     className={`sidebar-nav-item ${currentPage === 'settings' ? 'active' : ''}`}
                     onClick={() => setCurrentPage('settings')}
                   >
@@ -466,6 +654,71 @@ function AppContent() {
           </ErrorBoundary>
         </main>
       </div>
+
+      {/* Real-Time Demo Lead Toast Banner */}
+      {leadToast.show && leadToast.lead && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          right: '24px',
+          zIndex: 9999,
+          background: '#0f172a',
+          color: '#ffffff',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          boxShadow: '0 20px 30px -10px rgba(0,0,0,0.3)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '14px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          animation: 'slideInRight 0.3s ease'
+        }}>
+          <div style={{ fontSize: '1.8rem' }}>🎉</div>
+          <div>
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 800 }}>
+              New Demo Request Received!
+            </div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 800 }}>
+              {leadToast.lead.gym_name} ({leadToast.lead.city})
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#38bdf8' }}>
+              {leadToast.lead.contact_name} • {leadToast.lead.interested_plan || 'PRO'} Plan
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              setCurrentPage('leads');
+              setLeadToast({ show: false, lead: null });
+            }}
+            style={{
+              background: '#2563eb',
+              color: '#ffffff',
+              border: 'none',
+              padding: '6px 12px',
+              borderRadius: '6px',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              marginLeft: '8px'
+            }}
+          >
+            View Lead
+          </button>
+          <button
+            onClick={() => setLeadToast({ show: false, lead: null })}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              fontSize: '1rem',
+              cursor: 'pointer',
+              padding: '0 4px'
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
