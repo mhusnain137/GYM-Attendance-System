@@ -593,16 +593,22 @@ async function submitDemoForm(event) {
   feedback.innerHTML = `✓ Demo requested! Opening WhatsApp VIP Concierge...<br><a href="${waUrl}" target="_blank" style="display:inline-block;margin-top:10px;padding:8px 18px;background:#10b981;color:#ffffff;border-radius:6px;text-decoration:none;font-weight:700;font-size:14px;">👉 Tap Here to Open WhatsApp Direct</a>`;
   feedback.style.display = 'block';
 
-  try {
-    await fetch(`${apiBase}/api/saas/demo-request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-  } catch (err) {
-    console.warn('Backend offline or cross-origin notice:', err);
-  }
+  // Dual dispatch: Send to Localhost backend (if running) AND Cloud Vercel backend
+  const targets = [
+    'http://localhost:8000/api/saas/demo-request',
+    'https://gym-attendance-system-three.vercel.app/api/saas/demo-request'
+  ];
+
+  targets.forEach(targetUrl => {
+    try {
+      fetch(targetUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        keepalive: true
+      }).catch(() => {});
+    } catch (e) {}
+  });
 
   // Open WhatsApp reliably - window.location.href bypasses browser popup blockers 100%
   setTimeout(() => {

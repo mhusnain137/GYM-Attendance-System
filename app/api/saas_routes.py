@@ -1,6 +1,7 @@
 import os
 import json
 import uuid
+import urllib.request
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, HTTPException, Query
@@ -15,6 +16,34 @@ from db import mongo
 router = APIRouter(prefix='/api/saas', tags=['saas'])
 
 LEADS_FILE = os.path.join(PROJECT_ROOT, 'data', 'demo_leads.json')
+CLOUD_LEADS_URL = "https://gym-attendance-system-three.vercel.app/api/saas/leads"
+_last_cloud_sync_time = 0
+
+def sync_from_cloud_leads():
+    global _last_cloud_sync_time
+    now = datetime.now().timestamp()
+    if now - _last_cloud_sync_time < 8:  # Min 8s between syncs
+        return
+    _last_cloud_sync_time = now
+    try:
+        req = urllib.request.Request(CLOUD_LEADS_URL, headers={'User-Agent': 'Local-FastAPI-Sync/1.0'})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status == 200:
+                cloud_leads = json.loads(resp.read().decode('utf-8'))
+                if isinstance(cloud_leads, list) and len(cloud_leads) > 0:
+                    local_leads = load_leads()
+                    existing_ids = {l.get('lead_id') for l in local_leads if l.get('lead_id')}
+                    has_new = False
+                    for cl in cloud_leads:
+                        cid = cl.get('lead_id')
+                        if cid and cid not in existing_ids:
+                            local_leads.insert(0, cl)
+                            existing_ids.add(cid)
+                            has_new = True
+                    if has_new:
+                        save_leads(local_leads)
+    except Exception:
+        pass
 
 class DemoLeadRequest(BaseModel):
     gym_name: str
@@ -191,12 +220,14 @@ async def request_demo(payload: DemoLeadRequest):
 
 @router.get('/leads')
 async def get_demo_leads():
-    """Internal list of sales leads"""
+    """Internal list of sales leads (with cloud sync)"""
+    sync_from_cloud_leads()
     return load_leads()
 
 @router.get('/leads/unread-count')
 async def get_unread_leads_count():
     """Get number of unread demo leads for top navbar notification bell"""
+    sync_from_cloud_leads()
     leads = load_leads()
     unread = [l for l in leads if not l.get('is_read', False)]
     latest = unread[0] if unread else (leads[0] if leads else None)
